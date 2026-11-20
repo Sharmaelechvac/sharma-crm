@@ -164,6 +164,15 @@ main#main{
 }
 /* Record/form screens read at a narrower measure (§9.1) */
 main#main .formcard, main#main .q-maker{max-width:672px;}
+/* Screen-change enter motion — core adds .view-enter on navigation
+   only (tab switches, record opens, form open/close); in-view
+   re-renders (search, filters) never animate. Transform/opacity only. */
+@keyframes view-in{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+main#main.view-enter{animation:view-in .24s var(--ease);}
+@media (prefers-reduced-motion: reduce){ main#main.view-enter{animation:none;} }
+/* Soft press feedback on rows and tabs (a dim that fades, not a snap) */
+.rowitem, .sr-item, .chip{transition:background-color .15s var(--ease), color .15s var(--ease);}
+.tabbar button{transition:color .18s var(--ease);}
 @media (max-width:759.98px){
   main#main{
     padding-top:calc(var(--bar-top) + env(safe-area-inset-top) + 14px);
@@ -265,13 +274,19 @@ h3.sec{
   background:transparent;
   transition:background .25s var(--ease), box-shadow .25s var(--ease);
 }
-/* Glass once the Large Title has collapsed, and always on pushed
+/* Glass the moment content starts sliding under the bar (scroll-edge),
+   deeper state once the Large Title has collapsed, and always on pushed
    (detail/form) screens, which have no large title to collapse. */
-.topbar.scrolled, .topbar:not(.has-largetitle){
+.topbar.edge, .topbar.scrolled, .topbar:not(.has-largetitle){
   background:var(--glass-bg);
   -webkit-backdrop-filter:blur(20px) saturate(180%);
           backdrop-filter:blur(20px) saturate(180%);
   box-shadow:inset 0 -0.5px 0 var(--separator);
+}
+/* On phone, once the inline title is showing there is no room for the
+   wordmark too — the title takes the bar (iOS pushed-screen pattern). */
+@media (max-width:759.98px){
+  .topbar.scrolled .brand-mini, .topbar:not(.has-largetitle) .brand-mini{display:none;}
 }
 .topbar .brand-mini{
   font-weight:800; font-size:15px; letter-spacing:-.01em;
@@ -283,9 +298,9 @@ h3.sec{
   height:var(--bar-top); display:flex; align-items:center;
   transform:translateX(-50%);
   font-size:17px; font-weight:600; color:var(--label); white-space:nowrap;
-  max-width:38vw; overflow:hidden; text-overflow:ellipsis;
+  max-width:44vw; overflow:hidden; text-overflow:ellipsis;
   opacity:0; pointer-events:none;
-  transition:opacity .2s var(--ease);
+  transition:opacity .25s var(--ease);
 }
 .topbar.scrolled #viewtitle, .topbar:not(.has-largetitle) #viewtitle{opacity:1;}
 .topbar .spacer{flex:1;}
@@ -311,6 +326,16 @@ h3.sec{
   -webkit-backdrop-filter:blur(30px) saturate(180%);
           backdrop-filter:blur(30px) saturate(180%);
   box-shadow:var(--shadow-pop);
+  animation:menu-in .18s var(--ease);
+}
+@keyframes menu-in{from{opacity:0; transform:translateY(-4px) scale(.98);} to{opacity:1; transform:translateY(0) scale(1);}}
+/* Phone: the results sheet spans the bar's full width — anchored to the
+   narrow search field it would run off the left edge of the screen. */
+@media (max-width:759.98px){
+  #searchresults{
+    position:fixed; left:16px; right:16px; width:auto;
+    top:calc(var(--bar-top) + env(safe-area-inset-top) + 8px);
+  }
 }
 .sr-item{
   display:block; width:100%; text-align:left;
@@ -331,6 +356,15 @@ h3.sec{
   border:0.5px solid var(--glass-border);
   box-shadow:var(--glass-shadow);
   color:var(--tint); font-size:15px; font-weight:600;
+}
+/* No glass-on-glass: once the bar itself is glass, the capsule drops
+   its own blur and sits on a simple fill. */
+.topbar.edge .btn.gold, .topbar.scrolled .btn.gold, .topbar:not(.has-largetitle) .btn.gold{
+  background:var(--fill-3);
+  -webkit-backdrop-filter:none;
+          backdrop-filter:none;
+  border-color:transparent;
+  box-shadow:none;
 }
 @media (min-width:760px){
   .topbar{
@@ -682,22 +716,14 @@ table.data .sub2{color:var(--label-2); font-size:var(--fs-caption-1);}
 .empty-module .empty-ic{font-size:44px;}
 
 /* ================= forms (§9.5) =================
-   openForm flows are presented as sheets: the form container is a
-   glass sheet surface with a grabber; fields are quiet filled rows —
+   openForm flows render in-flow as a plain grouped card (content
+   layer: solid, no glass, no shadow); fields are quiet filled rows —
    no boxes, no underlines, no floating labels. */
 .formcard{
-  background:var(--sheet-bg);
-  -webkit-backdrop-filter:blur(30px) saturate(180%);
-          backdrop-filter:blur(30px) saturate(180%);
-  box-shadow:0 12px 32px rgba(0,0,0,.13), 0 2px 8px rgba(0,0,0,.07);
+  background:var(--bg-grouped-2);
   border-radius:var(--r-lg);
-  padding:14px 16px 20px;
+  padding:18px 16px 20px;
   margin-bottom:var(--gap-group);
-}
-.formcard::before{
-  content:""; display:block; width:36px; height:5px;
-  border-radius:3px; background:var(--label-3);
-  margin:0 auto 14px;
 }
 .fgrid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
 .fgrid .full{grid-column:1 / -1;}

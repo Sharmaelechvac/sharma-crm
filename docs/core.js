@@ -558,18 +558,39 @@ function positionTabSel(){
   sel.style.width = on.offsetWidth + "px";
   sel.style.transform = "translateX(" + on.offsetLeft + "px)";
 }
+let chromeHasLT = false, chromeEdge = null, chromeScrolled = null;
 function updateTopbar(){
   const bar = document.getElementById("topbar");
   if(!bar) return;
-  const lt = document.querySelector("#main h2.view, #main .greet");
   const y = window.scrollY || document.documentElement.scrollTop || 0;
-  bar.classList.toggle("has-largetitle", !!lt);
-  bar.classList.toggle("scrolled", !!lt && y > 48);
+  const edge = y > 4, scrolled = chromeHasLT && y > 48;
+  if(edge !== chromeEdge){ chromeEdge = edge; bar.classList.toggle("edge", edge); }
+  if(scrolled !== chromeScrolled){ chromeScrolled = scrolled; bar.classList.toggle("scrolled", scrolled); }
 }
-function updateChrome(){ updateTopbar(); positionTabSel(); }
+let chromeTicking = false;
+function onChromeScroll(){
+  if(chromeTicking) return;
+  chromeTicking = true;
+  const raf = window.requestAnimationFrame || function(f){ return setTimeout(f, 16); };
+  raf(function(){ chromeTicking = false; updateTopbar(); });
+}
+function updateChrome(){
+  chromeHasLT = !!document.querySelector("#main h2.view, #main .greet");
+  const bar = document.getElementById("topbar");
+  if(bar) bar.classList.toggle("has-largetitle", chromeHasLT);
+  chromeEdge = chromeScrolled = null;
+  updateTopbar();
+  positionTabSel();
+}
+function onChromeResize(){
+  const sel = document.getElementById("tabsel");
+  if(sel) sel.style.transition = "none";
+  positionTabSel();
+  if(sel) setTimeout(function(){ sel.style.transition = ""; }, 50);
+}
 try {
-  window.addEventListener("scroll", updateTopbar, { passive: true });
-  window.addEventListener("resize", positionTabSel);
+  window.addEventListener("scroll", onChromeScroll, { passive: true });
+  window.addEventListener("resize", onChromeResize);
 } catch(e){ /* non-browser test harness — chrome hooks are inert */ }
 
 /* ---------------- app state & lookups ---------------- */
@@ -789,6 +810,7 @@ function go(tab){
   render();
   window.scrollTo(0, 0);
 }
+let lastScreenKey = null;
 function render(){
   if(!UNLOCKED) return;
   const main = $("#main");
@@ -797,7 +819,7 @@ function render(){
   const t = $("#viewtitle");
   if(t) t.textContent = VIEW_TITLES[TAB] || "CRM";
   updateNav();
-  if(FORM_HTML != null){ main.innerHTML = FORM_HTML; updateChrome(); return; }
+  if(FORM_HTML != null){ main.innerHTML = FORM_HTML; animateScreen(main); updateChrome(); return; }
   const v = VIEWS[TAB];
   if(typeof v === "function"){
     main.innerHTML = v();
@@ -806,7 +828,20 @@ function render(){
       '<h3>Module loading</h3><p class="muted">The ' + esc(VIEW_TITLES[TAB] || TAB) +
       ' module has not loaded yet. Everything else in the CRM still works.</p></div>';
   }
+  animateScreen(main);
   updateChrome();
+}
+/* Screen-change enter motion: animate only when the screen identity
+   (tab + form + selected record) changes — in-view re-renders such as
+   search typing and filter taps stay still. */
+function animateScreen(main){
+  const key = TAB + "|" + (FORM_HTML != null ? "form" : [selClientId, selQuoteId, selJobId, selInvoiceId, selRequestId].join(","));
+  if(key === lastScreenKey) return;
+  lastScreenKey = key;
+  if(!main.classList) return;
+  main.classList.remove("view-enter");
+  void main.offsetWidth;
+  main.classList.add("view-enter");
 }
 function updateNav(){
   if(!DB) return;
