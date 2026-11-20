@@ -649,6 +649,10 @@ function mergeJobRecord(rec){
   }
   if(quote && !job.quoteId) job.quoteId = quote.id;
   job.clientId = client.id;
+  if(rec.title) job.title = String(rec.title);
+  if(rec.number != null) job.jobberNumber = String(rec.number).replace(/^#/, "");
+  const jAmt = rec.total != null ? Number(rec.total) : (rec.amount != null ? Number(rec.amount) : null);
+  if(jAmt != null && !isNaN(jAmt)) job.amount = jAmt;
   if(mapped === "Completed") job.status = "Completed";
   else if(mapped === "Late"){ job.status = "Active"; job.lateFlag = true; }
   else if(mapped === "Active" && job.status !== "Completed") job.status = "Active";
@@ -1494,8 +1498,8 @@ function viewJobs(){
     const c = clientById(j.clientId);
     const q = quoteById(j.quoteId);
     h += '<button class="rowitem" data-job="' + j.id + '"><span class="grow">' +
-           '<span class="name">' + esc(c ? c.name : "Unknown client") + ' · ' + j.trade + '</span>' +
-           '<div class="meta">' + (q ? q.number + ' · ' : '') + esc(propertyLabel(c, j.propertyId)) + ' · ' + jobDoneCount(j) + ' of 5 stages done · invoiced ' + money(jobInvoiced(j)) + ' of ' + money(jobAmount(j)) + '</div></span>' +
+           '<span class="name">' + esc(j.title || ((c ? c.name : "Unknown client") + ' · ' + j.trade)) + '</span>' +
+           '<div class="meta">' + (j.jobberNumber ? 'Job #' + esc(j.jobberNumber) + ' · ' : '') + (q ? q.number + ' · ' : '') + esc(c ? c.name : '') + ' · ' + esc(propertyLabel(c, j.propertyId)) + ' · ' + jobDoneCount(j) + ' of 5 stages done · invoiced ' + money(jobInvoiced(j)) + ' of ' + money(jobAmount(j)) + '</div></span>' +
            jobPill(j) + '<span class="chev">›</span></button>';
   });
   return h;
@@ -1517,6 +1521,8 @@ function viewJobDetail(j){
          jobPill(j) + '</div>';
   h += '<div class="kv"><span class="k">Trade</span><span class="v">' + j.trade + '</span></div>';
   if(q) h += '<div class="kv"><span class="k">From quote</span><span class="v">' + q.number + '</span></div>';
+  if(j.title) h += '<div class="kv"><span class="k">Job</span><span class="v">' + esc(j.title) + '</span></div>';
+  if(j.jobberNumber) h += '<div class="kv"><span class="k">Jobber job #</span><span class="v">' + esc(j.jobberNumber) + '</span></div>';
   h += '<div class="kv"><span class="k">Job amount</span><span class="v">' + money(amt) + '</span></div>';
   h += '<div class="kv"><span class="k">Invoiced so far</span><span class="v">' + money(invd) + '</span></div>';
   h += '<div class="kv"><span class="k">Left to invoice</span><span class="v">' + money(Math.max(0, amt - invd)) + '</span></div>';
