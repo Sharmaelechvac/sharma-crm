@@ -1,6 +1,17 @@
 /* =====================================================================
-   SHARMA360 CRM v3 — QUOTES module  (view-quotes.js)
-   Jobber-style quote workflow: list / maker / detail / printable document.
+   SHARMA360 CRM v4 — QUOTES module  (view-quotes.js)
+   Quote workflow: list / maker / detail / printable document.
+   v4: Apple-design restyle (grouped lists, .dhead detail header with
+   hero amount, §9.6 item rows, §9.8 .doc document). Data logic,
+   ACTIONS/VIEWS names and price gates are unchanged from v3.
+   New class hooks introduced for style.css: .q-toolbar (no longer a
+   card), .q-toolsrow, .trail (row trailing column: amount over pill),
+   .items/.lrow (grouped line-item rows), .addrow (tint add-line row),
+   .dangerzone (bottom destructive group), .doc-rule (doc hairline),
+   .dh-num/.dh-pills/.dh-hero/.dh-title (detail-header family, joining
+   core's .dh-top/.dh-sub/.dh-actions). Labels now use core's .f;
+   .q-flabel is retired. Pills come from core's quotePill() (§9.7
+   dot + tinted fill is CSS's job on .pill).
 
    Registers:  VIEWS.quotes, ACTIONS.q_*  (see V3-CONTRACT.md)
 
@@ -26,9 +37,9 @@
      totals) are bound by qBind() via a deferred setTimeout after the
      view HTML is returned, guarded by element existence. List search
      re-fills only #q-results so the search box keeps focus.
-   - Print: the document view carries class "printdoc" and ships a
-     small scoped <style> with @media print rules so window.print()
-     prints only the document even if core's print CSS differs.
+   - Print: the document view uses core's .doc surface — core's
+     @media print rules print only .doc, so window.print() prints
+     just the document.
    ===================================================================== */
 
 /* ---------------- module state ---------------- */
@@ -86,9 +97,9 @@ function qFiltered(){
   return list;
 }
 function qTradeTag(trade){
-  var hvac = trade === "HVAC";
-  return '<span class="q-trade"><span class="q-dot" style="background:' +
-    (hvac ? "#b97a1e" : "#264387") + '"></span>' + esc(trade || "Electric") + "</span>";
+  /* Core's badge — one icon/tag system across the app (no inline colours). */
+  if (typeof tradeTag === "function") return tradeTag(trade || "Electric");
+  return '<span class="badge">' + esc(trade || "Electric") + "</span>";
 }
 function qStatusCounts(){
   var counts = { All: DB.quotes.length };
@@ -111,14 +122,14 @@ function qListHTML(){
          ? '<button class="btn gold" data-act="q_new">+ New Quote</button>'
          : '<span class="muted q-gatenote">Office view — quotes are created by the Owner.</span>') +
        "</div>";
-  h += '<div class="card q-toolbar">' +
+  h += '<div class="q-toolbar">' +
          '<input id="q-search" class="q-search" type="search" placeholder="Search number, client, or title…" value="' + esc(QV.search) + '">' +
+         '<div class="q-toolsrow"><div class="chips q-chips">' + chips + "</div>" +
          '<label class="q-sortwrap">Sort <select id="q-sort" class="q-sort">' +
            '<option value="new"' + (QV.sort === "new" ? " selected" : "") + ">Newest first</option>" +
            '<option value="old"' + (QV.sort === "old" ? " selected" : "") + ">Oldest first</option>" +
            '<option value="amt"' + (QV.sort === "amt" ? " selected" : "") + ">Amount, high to low</option>" +
-         "</select></label>" +
-         '<div class="q-chips">' + chips + "</div>" +
+         "</select></label></div>" +
        "</div>";
   h += '<div id="q-results">' + qResultsHTML() + "</div>";
   h += "</div>";
@@ -143,11 +154,11 @@ function qResultsHTML(){
        '<th class="r">Amount</th><th>Status</th><th>Date</th></tr></thead><tbody>';
   list.forEach(function(q){
     h += '<tr class="qrow" data-act="q_open" data-id="' + q.id + '">' +
-      "<td><strong>" + esc(q.number) + "</strong></td>" +
+      "<td>" + esc(q.number) + "</td>" +
       "<td>" + esc(qClientName(q)) + "</td>" +
       "<td>" + esc(quoteTitle(q)) + "</td>" +
       "<td>" + qTradeTag(q.trade) + "</td>" +
-      '<td class="r"><strong>' + money(quoteTotal(q)) + "</strong></td>" +
+      '<td class="r">' + money(quoteTotal(q)) + "</td>" +
       "<td>" + quotePill(q.status) + "</td>" +
       "<td>" + fmtDate(q.createdAt) + "</td></tr>";
   });
@@ -161,8 +172,8 @@ function qResultsHTML(){
       '<span class="avatar">' + esc(init) + "</span>" +
       '<span class="grow"><span class="name">' + esc(q.number) + " · " + esc(quoteTitle(q)) + "</span>" +
       '<span class="meta">' + esc(qClientName(q)) + " · " + esc(q.trade || "Electric") + " · " + fmtDate(q.createdAt) + "</span></span>" +
-      '<span class="amt">' + money(quoteTotal(q)) + "</span>" + quotePill(q.status) +
-      '<span class="chev">›</span></button>';
+      '<span class="trail"><span class="amt">' + money(quoteTotal(q)) + "</span>" + quotePill(q.status) +
+      "</span></button>";
   });
   h += "</div>";
   return h;
@@ -178,14 +189,19 @@ function qDetailHTML(q){
   var h = '<div id="qroot">';
   h += '<button class="backbtn" data-act="q_back">← All quotes</button>';
 
-  /* header card */
-  h += '<div class="card q-detail-head"><div class="q-dh-main">' +
-    '<div class="q-dh-title">' + esc(q.number) + " — " + esc(quoteTitle(q)) + "</div>" +
-    '<div class="muted">' + esc(qClientName(q)) + " · " + esc(propertyLabel(c, q.propertyId)) + "</div>" +
-    '<div class="q-dh-tags">' + qTradeTag(q.trade) + " " + quotePill(q.status) + "</div></div>" +
-    '<div class="q-dh-amt"><div class="q-dh-total">' + money(total) + '</div><div class="muted">Quote total</div></div></div>';
+  /* header (§9.4): pill + number footnote, hero amount, title, sublines */
+  h += '<div class="dhead">' +
+    '<div class="dh-top"><span class="dh-num">' + esc(q.number) + '</span>' +
+    '<span class="dh-pills">' + quotePill(q.status) + " " + qTradeTag(q.trade) + "</span></div>" +
+    '<div class="dh-hero">' + money(total) + "</div>" +
+    '<div class="dh-title">' + esc(quoteTitle(q)) + "</div>" +
+    '<div class="dh-sub">' + esc(qClientName(q)) + " · " + esc(propertyLabel(c, q.propertyId)) + "</div>" +
+    '<div class="dh-sub">Created ' + fmtDate(q.createdAt) +
+      (q.sentAt ? " · Sent " + fmtDate(q.sentAt) : "") +
+      (q.approvedAt ? " · Approved " + fmtDate(q.approvedAt) : "") + "</div>";
 
-  /* actions */
+  /* actions — one filled (gold) primary per state; Delete lives in the
+     danger zone at the bottom, never beside Save/Send (§9.4). */
   var acts = [];
   acts.push('<button class="btn" data-act="q_doc" data-id="' + q.id + '">View Document</button>');
   if (q.status === "Draft"){
@@ -204,16 +220,15 @@ function qDetailHTML(q){
     if (job) acts.push('<button class="btn gold" data-open-job="' + job.id + '" data-act="q_openjob" data-id="' + job.id + '">View Job →</button>');
   }
   if (owner) acts.push('<button class="btn" data-act="q_dup" data-id="' + q.id + '">Duplicate</button>');
-  if (q.status === "Draft") acts.push('<button class="btn danger" data-act="q_del" data-id="' + q.id + '">Delete</button>');
-  h += '<div class="q-actions">' + acts.join("") + "</div>";
+  h += '<div class="dh-actions">' + acts.join("") + "</div></div>";
   if (q.status === "Draft" && !owner)
     h += '<div class="card q-notice">Draft quotes are priced and sent by the Owner — the office can view everything here but can’t send or edit amounts.</div>';
 
   /* two-column body */
   h += '<div class="q-cols"><div class="q-main">';
-  h += '<div class="card"><h3 class="sec">Line items</h3>' + qLinesTableHTML(q) +
-       '<div class="q-totals"><div class="kv"><span class="k">Subtotal</span><span class="v">' + money(total) + "</span></div>" +
-       '<div class="kv q-grand"><span class="k">Total</span><span class="v">' + money(total) + "</span></div></div></div>";
+  h += '<div class="card"><h3 class="sec">Line items</h3>' + qLinesRowsHTML(q) + "</div>";
+  h += '<div class="card q-totals"><div class="kv"><span class="k">Subtotal</span><span class="v">' + money(total) + "</span></div>" +
+       '<div class="kv q-grand"><span class="k">Total</span><span class="v">' + money(total) + "</span></div></div>";
   if (q.notes) h += '<div class="card"><h3 class="sec">Internal notes</h3><p class="q-notes">' + esc(q.notes) + "</p></div>";
   h += "</div>";
 
@@ -236,24 +251,50 @@ function qDetailHTML(q){
     '<div class="kv"><span class="k">Sent</span><span class="v">' + fmtDate(q.sentAt) + "</span></div>" +
     '<div class="kv"><span class="k">Approved</span><span class="v">' + fmtDate(q.approvedAt) + "</span></div>" +
     "</div>";
-  h += "</div></div></div>";
+  h += "</div></div>"; /* /q-side /q-cols */
+
+  /* destructive group — last, alone (§9.4) */
+  if (q.status === "Draft")
+    h += '<div class="dangerzone"><button class="btn danger block" data-act="q_del" data-id="' + q.id + '">Delete draft</button></div>';
+  h += "</div>";
   return h;
 }
-function qLinesTableHTML(q){
+/* Detail line items as grouped rows (§9.6): title Body, detail
+   Subheadline "qty × unit price", trailing amount tabular. */
+function qLinesRowsHTML(q){
   var lines = q.lines || [];
   if (!lines.length){
-    return '<p class="muted">No line items on file — the total was carried over from Jobber.</p>' +
-      '<table class="qtable"><tbody><tr><td>Quote total (from Jobber)</td>' +
-      '<td class="r">1</td><td class="r">' + money(q.totalAmount) + '</td>' +
-      '<td class="r"><strong>' + money(q.totalAmount) + "</strong></td></tr></tbody></table>";
+    return '<div class="items"><div class="lrow"><span class="grow">' +
+      '<span class="name">Quote total (from Jobber)</span>' +
+      '<span class="meta">No line items on file — the total was carried over from Jobber</span></span>' +
+      '<span class="amt">' + money(q.totalAmount) + "</span></div></div>";
   }
-  var h = '<table class="qtable"><thead><tr><th>Description</th><th class="r">Qty</th>' +
-          '<th class="r">Unit price</th><th class="r">Amount</th></tr></thead><tbody>';
+  var h = '<div class="items">';
   lines.forEach(function(l){
     var qty = Number(l.qty) || 0, price = Number(l.price) || 0;
-    h += "<tr><td>" + esc(l.desc || "") + '</td><td class="r">' + qty + '</td><td class="r">' +
-         money(price) + '</td><td class="r">' + money(qty * price) + "</td></tr>";
+    h += '<div class="lrow"><span class="grow"><span class="name">' + esc(l.desc || "") + "</span>" +
+      '<span class="meta">' + qty + " × " + money(price) + "</span></span>" +
+      '<span class="amt">' + money(qty * price) + "</span></div>";
   });
+  h += "</div>";
+  return h;
+}
+/* Document line items as a true table (§9.8 — the one place a grid is
+   native to the medium). Rendered inside core's .doc surface. */
+function qDocLinesHTML(q){
+  var lines = q.lines || [];
+  var h = '<table><thead><tr><th>Description</th><th class="r">Qty</th>' +
+          '<th class="r">Unit price</th><th class="r">Amount</th></tr></thead><tbody>';
+  if (!lines.length){
+    h += '<tr><td>Quote total (from Jobber)</td><td class="r">1</td><td class="r">' +
+         money(q.totalAmount) + '</td><td class="r">' + money(q.totalAmount) + "</td></tr>";
+  } else {
+    lines.forEach(function(l){
+      var qty = Number(l.qty) || 0, price = Number(l.price) || 0;
+      h += "<tr><td>" + esc(l.desc || "") + '</td><td class="r">' + qty + '</td><td class="r">' +
+           money(price) + '</td><td class="r">' + money(qty * price) + "</td></tr>";
+    });
+  }
   h += "</tbody></table>";
   return h;
 }
@@ -268,27 +309,34 @@ function qDocHTML(q){
   var h = '<div id="qroot">';
   h += '<div class="q-docbar"><button class="backbtn" data-act="q_open" data-id="' + q.id + '">← Back to quote</button>' +
        '<button class="btn gold" data-act="q_print">Print</button></div>';
-  h += "<style>@media print{body *{visibility:hidden}.printdoc,.printdoc *{visibility:visible}" +
-       ".printdoc{position:absolute;left:0;top:0;width:100%}.q-docbar{display:none}}</style>";
-  h += '<div class="printdoc card q-doc">';
-  if (q.status === "Draft") h += '<div class="q-watermark">DRAFT</div>';
-  h += '<div class="q-doc-head"><div><div class="q-doc-co">SHARMA ELECTRIC &amp; HVAC</div>' +
-       '<div class="muted">SHARMA360 · EC13013924 · CAC1823596</div>' +
-       '<div class="muted">office@sharmaelectric.com · 407-881-9076</div></div>' +
-       '<div class="q-doc-qno"><div class="q-doc-qt">QUOTE</div><div>' + esc(q.number) + "</div>" +
+  /* §9.8: opaque light-only .doc surface (core's print CSS prints only
+     .doc). Brand colour appears only in the wordmark + one tint rule. */
+  h += '<div class="doc q-doc">';
+  h += '<div class="doc-head"><div><div class="doc-co">SHARMA ELECTRIC &amp; <span class="gold">HVAC</span></div>' +
+       '<div class="muted">SHARMA360</div>' +
+       '<div class="small muted">Lic. EC13013924 · CAC1823596</div>' +
+       '<div class="small muted">office@sharmaelectric.com · 407-881-9076</div></div>' +
+       '<div><div class="doc-title">Quote</div><div class="doc-num">' + esc(q.number) + "</div>" +
+       (q.status === "Draft" ? '<span class="tag-draft">DRAFT — not sent</span>' : quotePill(q.status)) +
        '<div class="muted">' + fmtDate(q.createdAt) + "</div></div></div>";
-  h += '<div class="q-doc-client"><h3 class="sec">Prepared for</h3>' +
+  h += '<div class="doc-rule"></div>';
+  h += '<div class="doc-parties">' +
+       '<div class="dp"><div class="dp-h">Prepared for</div>' +
        '<div class="q-cname">' + esc(qClientName(q)) + "</div>" +
        (contact ? '<div>' + esc(contact.name) + (contact.role ? " · " + esc(contact.role) : "") + "</div>" : "") +
        (c && c.phone ? "<div>" + esc(c.phone) + "</div>" : "") +
-       (c && c.email ? "<div>" + esc(c.email) + "</div>" : "") +
-       '<div class="muted">Property: ' + esc(propertyLabel(c, q.propertyId)) + "</div>" +
-       '<div class="muted">Trade: ' + esc(q.trade || "Electric") + "</div></div>";
+       (c && c.email ? "<div>" + esc(c.email) + "</div>" : "") + "</div>" +
+       '<div class="dp"><div class="dp-h">Job details</div>' +
+       '<div class="kv"><span class="k">Property</span><span class="v">' + esc(propertyLabel(c, q.propertyId)) + "</span></div>" +
+       '<div class="kv"><span class="k">Trade</span><span class="v">' + esc(q.trade || "Electric") + "</span></div>" +
+       '<div class="kv"><span class="k">Date</span><span class="v">' + fmtDate(q.createdAt) + "</span></div>" +
+       '<div class="kv"><span class="k">Status</span><span class="v">' + esc(q.status) + "</span></div>" +
+       "</div></div>";
   if (q.title) h += '<div class="q-doc-title">' + esc(q.title) + "</div>";
-  h += qLinesTableHTML(q);
-  h += '<div class="q-totals"><div class="kv"><span class="k">Subtotal</span><span class="v">' + money(total) + "</span></div>" +
-       '<div class="kv q-grand"><span class="k">Total</span><span class="v">' + money(total) + "</span></div></div>";
-  h += '<div class="q-doc-foot muted">Thank you for the opportunity to earn your business. ' +
+  h += qDocLinesHTML(q);
+  h += '<div class="doc-totals"><div class="kv"><span class="k">Subtotal</span><span class="v">' + money(total) + "</span></div>" +
+       '<div class="kv"><span class="k">Total</span><span class="v grand">' + money(total) + "</span></div></div>";
+  h += '<div class="doc-foot">Thank you for the opportunity to earn your business. ' +
        "This quote is a proposal only and is not a bill. Prices are as quoted above; work is scheduled once the quote is approved.</div>";
   h += "</div></div>";
   return h;
@@ -333,8 +381,8 @@ function qLineRowHTML(l){
   return '<div class="qf-row">' +
     '<select class="qf-prod" aria-label="Pick a product">' + qProductOptions() + "</select>" +
     '<input class="qf-desc" type="text" placeholder="Description" value="' + esc(l.desc) + '">' +
-    '<input class="qf-qty" type="number" min="0" step="any" placeholder="Qty" value="' + (l.qty === "" ? "" : l.qty) + '">' +
-    '<input class="qf-price" type="number" min="0" step="0.01" placeholder="Unit price" value="' + (l.price === "" ? "" : l.price) + '">' +
+    '<input class="qf-qty" type="number" min="0" step="any" inputmode="decimal" placeholder="Qty" value="' + (l.qty === "" ? "" : l.qty) + '">' +
+    '<input class="qf-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Unit price" value="' + (l.price === "" ? "" : l.price) + '">' +
     '<span class="qf-ltotal">' + money(lineTotal) + "</span>" +
     '<span class="qf-rowbtns">' +
       '<button class="btn sm" data-act="q_lineup" title="Move up">↑</button>' +
@@ -357,31 +405,37 @@ function qMakerHTML(){
   var total = lines.reduce(function(s, l){ return s + (Number(l.qty) || 0) * (Number(l.price) || 0); }, 0);
   var h = '<div id="qroot">';
   h += '<button class="backbtn" data-act="q_cancel">← Cancel</button>';
+  /* details group (§9.5 grouped form) */
   h += '<div class="card q-maker"><h2 class="view">' + (q ? "Edit " + esc(q.number) : "New Quote") + "</h2>";
-  h += '<div class="q-err" id="qf-err" style="display:none"></div>';
-  h += '<label class="q-flabel">Client</label>' +
+  h += '<label class="f">Client</label>' +
        '<input id="qf-clientsearch" class="q-search" type="search" placeholder="Search clients…">' +
        '<select id="qf-client" class="q-select">' + qClientOptions(clientId) + "</select>";
-  h += '<label class="q-flabel">Property</label>' +
+  h += '<label class="f">Property</label>' +
        '<select id="qf-property" class="q-select">' + qPropertyOptions(client, propertyId) + "</select>";
-  h += '<label class="q-flabel">Trade — one trade per quote</label>' +
-       '<div class="q-tradewrap">' +
+  h += '<label class="f">Trade — one trade per quote</label>' +
+       '<div class="q-tradewrap seg">' +
          '<button class="btn q-tradebtn' + (trade === "Electric" ? " on" : "") + '" data-act="q_trade" data-trade="Electric">Electric</button>' +
          '<button class="btn q-tradebtn' + (trade === "HVAC" ? " on" : "") + '" data-act="q_trade" data-trade="HVAC">HVAC</button>' +
        '</div><input type="hidden" id="qf-trade" value="' + esc(trade) + '">';
-  h += '<label class="q-flabel">Title</label>' +
+  h += '<label class="f">Title</label>' +
        '<input id="qf-title" class="q-input" type="text" placeholder="e.g. Rough-in — Lot 12, Bella Collina" value="' + esc(title) + '">';
-  h += '<label class="q-flabel">Line items</label><div id="qf-lines">';
+  h += "</div>";
+  /* items group (§9.6) */
+  h += '<div class="card"><h3 class="sec">Line items</h3><div id="qf-lines">';
   lines.forEach(function(l){ h += qLineRowHTML(l); });
-  h += '</div><button class="btn" data-act="q_addline">+ Add line</button>';
-  h += '<p class="muted q-picknote">Picking a product fills the description and model — the price is always entered by hand.</p>';
-  h += '<div class="q-totals"><div class="kv"><span class="k">Subtotal</span><span class="v" id="qf-subtotal">' + money(total) + "</span></div>" +
+  h += '</div><button class="addrow" data-act="q_addline">＋ Add line</button>';
+  h += '<p class="muted q-picknote">Picking a product fills the description and model — the price is always entered by hand.</p></div>';
+  /* totals group — separate grouped card (§9.6) */
+  h += '<div class="card q-totals"><div class="kv"><span class="k">Subtotal</span><span class="v" id="qf-subtotal">' + money(total) + "</span></div>" +
        '<div class="kv q-grand"><span class="k">Total</span><span class="v" id="qf-total">' + money(total) + "</span></div></div>";
-  h += '<label class="q-flabel">Internal notes (not on the client document)</label>' +
-       '<textarea id="qf-notes" class="q-input" rows="3" placeholder="Office notes…">' + esc(notes) + "</textarea>";
+  /* notes group */
+  h += '<div class="card"><label class="f">Internal notes (not on the client document)</label>' +
+       '<textarea id="qf-notes" class="q-input" rows="3" placeholder="Office notes…">' + esc(notes) + "</textarea></div>";
+  /* error sits below the groups, footnote-style (§9.5) */
+  h += '<div class="q-err" id="qf-err" style="display:none"></div>';
   h += '<div class="q-actions"><button class="btn gold" data-act="q_save">Save as Draft</button>' +
        '<button class="btn" data-act="q_cancel">Cancel</button></div>';
-  h += "</div></div>";
+  h += "</div>";
   return h;
 }
 

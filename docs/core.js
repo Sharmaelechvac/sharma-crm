@@ -522,6 +522,56 @@ async function loadExternalData(){
   } catch(e){ /* no data.json in this folder yet — the app runs on local data */ }
 }
 
+/* =====================================================================
+   v4 PRESENTATION — appearance + shell chrome (no data-layer changes)
+   Appearance (Sanjay's standing rule, 2026-11-19): the app ALWAYS
+   opens in light mode, even when the OS is in dark mode. Dark is
+   chosen only with the in-app Appearance switch (setAppearance) and
+   remembered on this device. There is no automatic mode and the app
+   never follows prefers-color-scheme. index.html sets the initial
+   html[data-theme] before first paint; applyAppearance() re-asserts
+   it here. The Settings screen (view-more) calls setAppearance or
+   the appearanceLight / appearanceDark actions.
+   ===================================================================== */
+const LS_APPEARANCE = "sharma-crm-appearance";
+function savedAppearance(){
+  try { return localStorage.getItem(LS_APPEARANCE) === "dark" ? "dark" : "light"; }
+  catch(e){ return "light"; }
+}
+function setAppearance(mode){
+  const m = mode === "dark" ? "dark" : "light";
+  if(document && document.documentElement) document.documentElement.dataset.theme = m;
+  try { localStorage.setItem(LS_APPEARANCE, m); } catch(e){ /* storage unavailable */ }
+  return m;
+}
+function applyAppearance(){ return setAppearance(savedAppearance()); }
+
+/* Shell chrome: scroll-edge top bar (Large Title in the content on
+   root tabs collapses to the bar's inline title) + the floating tab
+   bar's sliding selection capsule. Purely presentational. */
+function positionTabSel(){
+  const bar = document.getElementById("tabbar"), sel = document.getElementById("tabsel");
+  if(!bar || !sel) return;
+  const on = bar.querySelector("button.on");
+  if(!on){ sel.style.opacity = "0"; return; }
+  sel.style.opacity = "1";
+  sel.style.width = on.offsetWidth + "px";
+  sel.style.transform = "translateX(" + on.offsetLeft + "px)";
+}
+function updateTopbar(){
+  const bar = document.getElementById("topbar");
+  if(!bar) return;
+  const lt = document.querySelector("#main h2.view, #main .greet");
+  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  bar.classList.toggle("has-largetitle", !!lt);
+  bar.classList.toggle("scrolled", !!lt && y > 48);
+}
+function updateChrome(){ updateTopbar(); positionTabSel(); }
+try {
+  window.addEventListener("scroll", updateTopbar, { passive: true });
+  window.addEventListener("resize", positionTabSel);
+} catch(e){ /* non-browser test harness — chrome hooks are inert */ }
+
 /* ---------------- app state & lookups ---------------- */
 let TAB = "home";
 let selClientId = null, selQuoteId = null, selJobId = null, selInvoiceId = null, selRequestId = null;
@@ -747,7 +797,7 @@ function render(){
   const t = $("#viewtitle");
   if(t) t.textContent = VIEW_TITLES[TAB] || "CRM";
   updateNav();
-  if(FORM_HTML != null){ main.innerHTML = FORM_HTML; return; }
+  if(FORM_HTML != null){ main.innerHTML = FORM_HTML; updateChrome(); return; }
   const v = VIEWS[TAB];
   if(typeof v === "function"){
     main.innerHTML = v();
@@ -756,6 +806,7 @@ function render(){
       '<h3>Module loading</h3><p class="muted">The ' + esc(VIEW_TITLES[TAB] || TAB) +
       ' module has not loaded yet. Everything else in the CRM still works.</p></div>';
   }
+  updateChrome();
 }
 function updateNav(){
   if(!DB) return;
@@ -803,6 +854,8 @@ function toast(msg){
 }
 
 /* ---------------- core actions ---------------- */
+ACTIONS.appearanceLight = function(){ setAppearance("light"); toast("Appearance: Light"); };
+ACTIONS.appearanceDark = function(){ setAppearance("dark"); toast("Appearance: Dark"); };
 ACTIONS.lock = function(){ lockApp(); };
 ACTIONS.switchRole = function(){
   $("#appshell").classList.add("hidden");
@@ -936,6 +989,7 @@ function wireSearch(){
 }
 
 /* ---------------- boot ---------------- */
+applyAppearance();
 wireSearch();
 loadDB();
 seedIfNeeded();

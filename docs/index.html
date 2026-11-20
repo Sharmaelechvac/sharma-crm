@@ -1,9 +1,24 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <title>SHARMA360 CRM</title>
+<script>
+/* Appearance boot — Sanjay's standing rule for every Sharma app
+   (2026-11-19): the app ALWAYS opens in LIGHT mode, even when the
+   phone is in dark mode. Dark appears only through the in-app
+   Appearance switch and is remembered on this device. The app never
+   follows prefers-color-scheme. This runs before the stylesheet so
+   the first paint is already correct. */
+(function(){
+  try {
+    var t = localStorage.getItem("sharma-crm-appearance");
+    document.documentElement.dataset.theme = (t === "dark") ? "dark" : "light";
+  } catch(e){ document.documentElement.dataset.theme = "light"; }
+})();
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,12 +29,13 @@
 <!-- ============ APP SHELL ============ -->
 <div id="appshell" class="hidden">
 
-  <!-- Sidebar (desktop ≥900px) -->
+  <!-- Sidebar (≥760px) -->
   <aside class="sidebar">
     <div class="wordmark">
       <div class="wm-name">SHARMA<span class="gold">360</span> · CRM</div>
       <div class="wm-sub">Sharma Electric &amp; HVAC</div>
     </div>
+    <div class="snav-label">Menu</div>
     <nav class="snav">
       <button data-nav="home"><span class="ic">⌂</span><span class="lbl">Home</span></button>
       <button data-nav="clients"><span class="ic">👥</span><span class="lbl">Clients</span><span class="navcount" id="navcount-clients">0</span></button>
@@ -36,8 +52,10 @@
   </aside>
 
   <div class="mainwrap">
-    <!-- Top header bar -->
-    <header class="topbar">
+    <!-- Top bar: glass chrome. On root tabs the Large Title lives in
+         the scroll content; this bar's inline title fades in on scroll
+         (core.js toggles .scrolled / .has-largetitle). -->
+    <header class="topbar" id="topbar">
       <div class="brand-mini">SHARMA<span class="gold">360</span></div>
       <div id="viewtitle">Home</div>
       <div class="spacer"></div>
@@ -46,14 +64,15 @@
         <input type="search" id="globalsearch" placeholder="Search clients, quotes, jobs, invoices…" autocomplete="off" aria-label="Search the CRM">
         <div id="searchresults" class="hidden"></div>
       </div>
-      <button class="btn gold" data-act="globalNew">＋ New</button>
+      <button class="btn gold" data-act="globalNew" aria-label="Create new">＋<span class="btn-new-lbl">&nbsp;New</span></button>
     </header>
 
     <main id="main"></main>
   </div>
 
-  <!-- Bottom tab bar (phone) -->
+  <!-- Floating glass tab bar (phone) -->
   <nav class="tabbar" id="tabbar">
+    <span class="tab-sel" id="tabsel" aria-hidden="true"></span>
     <button data-nav="home"><span class="ic">⌂</span>Home</button>
     <button data-nav="clients"><span class="ic">👥</span>Clients</button>
     <button data-nav="quotes"><span class="ic">📄</span>Quotes</button>
@@ -76,7 +95,7 @@
 <script>
 /* ---- integration bridges (Jarvis): cross-module deep links + action aliases ---- */
 (function(){
-  if(!window.ACTIONS) return;
+  if(typeof ACTIONS === "undefined") return;
   if(ACTIONS.q_new && !ACTIONS.quote_new) ACTIONS.quote_new = ACTIONS.q_new;
   if(ACTIONS.cl_new && !ACTIONS.client_new) ACTIONS.client_new = ACTIONS.cl_new;
   if(ACTIONS.inv_new && !ACTIONS.invoice_new) ACTIONS.invoice_new = ACTIONS.inv_new;

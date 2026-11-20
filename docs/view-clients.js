@@ -1,6 +1,9 @@
 /* =====================================================================
-   SHARMA360 CRM v3 — CLIENTS module  (view-clients.js)
+   SHARMA360 CRM v4 — CLIENTS module  (view-clients.js)
    Registers VIEWS.clients + ACTIONS.cl_* per V3-CONTRACT.md.
+   v4 presentation: Apple design (spec §9.3 rows, §9.4 detail header,
+   §9.5 grouped forms, §9.7 pills, §5.8 desktop table). All data
+   logic, actions and navigation conventions are unchanged from v3.
 
    Navigation convention used: core's openRecord(kind, id) when present
    (kind: client|quote|job|invoice); otherwise the shared state vars —
@@ -76,6 +79,26 @@ function clPropertyCountLabel(c){
 function clQuotesOf(id){ return DB.quotes.filter(function(q){ return q.clientId === id; }); }
 function clJobsOf(id){ return DB.jobs.filter(function(j){ return j.clientId === id; }); }
 function clInvoicesOf(id){ return DB.invoices.filter(function(i){ return i.clientId === id; }); }
+/* Past-due balance for one client — drives the red owed amount in
+   list rows (§9.3: overdue amount in --red/600). Read-only. */
+function clPastDue(id){
+  return clInvoicesOf(id).reduce(function(s, i){
+    return displayInvoiceStatus(i) === "Past due" ? s + invoiceBalance(i) : s;
+  }, 0);
+}
+/* Inline SVG stroke icons (spec §7.2 web equivalent of SF Symbols):
+   24px grid, stroke currentColor, round caps/joins. Used for the
+   detail quick-action row and the list search glyph. */
+function clIcon(name){
+  var p = {
+    phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    message: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+    mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+    pin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>'
+  }[name] || "";
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>';
+}
 /* Most recent activity date (ISO string) across the client's records. */
 function clLastActivity(c){
   var d = "";
@@ -183,34 +206,89 @@ function clFilteredClients(){
 
 /* Module-scoped styles, emitted with every clients render (list, detail
    and form) so the module looks right however the user lands on it.
-   Mostly cl-* classes; the .grid2/.amt.owed/label.f rules are layout
-   fallbacks in case the core stylesheet has not defined them yet. */
+   v4: Apple design tokens (spec §8) with literal fallbacks, so the
+   module renders correctly before/with the shell stylesheet. Content
+   surfaces are opaque grouped cards — no shadows, 0.5px hairlines. */
 function clStyleTag(){
+  var SEP = '0.5px solid var(--separator,rgba(60,60,67,.29))';
   return '<style>' +
     '@media (min-width:900px){.cl-mobile{display:none}}' +
     '@media (max-width:899px){.cl-desktop{display:none}}' +
-    '.cl-tbl{width:100%;border-collapse:collapse;background:#fff}' +
-    '.cl-tbl th{text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:#5b6b84;padding:10px 12px;border-bottom:1px solid #e3e8f0}' +
-    '.cl-tbl td{padding:11px 12px;border-bottom:1px solid #eef1f6;vertical-align:middle}' +
-    '.cl-tbl tbody tr{cursor:pointer}.cl-tbl tbody tr:hover{background:#f5f8fd}' +
-    '.cl-tbl .r{text-align:right}.cl-owed{color:#c22f2f;font-weight:700}' +
-    '.cl-money{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}' +
-    '@media (min-width:900px){.cl-money{grid-template-columns:repeat(4,1fr)}}' +
-    '.cl-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 4px}' +
-    '.cl-tabs button{min-height:44px;padding:8px 14px;border-radius:999px;border:1px solid #d4dce8;background:#fff;font-weight:600;cursor:pointer}' +
-    '.cl-tabs button.on{background:#264387;color:#fff;border-color:#264387}' +
-    '.cl-tl{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #eef1f6}' +
-    '.cl-tl:last-child{border-bottom:none}' +
-    '.cl-badge{flex:0 0 auto;font-size:.68rem;font-weight:800;letter-spacing:.05em;padding:4px 8px;border-radius:6px;background:#e8edf6;color:#264387;height:fit-content}' +
-    '.cl-actions{display:flex;gap:8px;flex-wrap:wrap}' +
-    '.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}' +
-    '@media (max-width:560px){.grid2{grid-template-columns:1fr}}' +
-    '.amt.owed{color:#c22f2f}' +
-    'label.f{display:block}' +
+    /* search field icon (§9.3) */
+    '.cl-search .s-ic{color:var(--label-2,rgba(60,60,67,.6))}' +
+    '.cl-search .s-ic svg{width:18px;height:18px;display:block}' +
+    /* filter pills — §9.7 monochrome inversion, one scroll row */
+    '.cl-filters{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}' +
+    '.cl-filters .chip{flex:0 0 auto;background:var(--fill-3,rgba(120,120,128,.12));border-color:transparent;color:var(--label,#000)}' +
+    '.cl-filters .chip.on{background:var(--label,#000);border-color:var(--label,#000);color:var(--bg,#fff)}' +
+    /* desktop table — §5.8: hairlines only, no zebra, tabular amounts */
+    '.cl-tbl{width:100%;border-collapse:collapse;background:var(--bg-grouped-2,#fff)}' +
+    '.cl-tbl th{text-align:left;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--label-2,rgba(60,60,67,.6));padding:10px 16px;border-bottom:' + SEP + '}' +
+    '.cl-tbl td{padding:11px 16px;border-bottom:' + SEP + ';vertical-align:middle;font-size:15px}' +
+    '.cl-tbl tbody tr{cursor:pointer}.cl-tbl tbody tr:hover{background:var(--fill-4,rgba(120,120,128,.08))}' +
+    '.cl-tbl tbody tr:last-child td{border-bottom:0}' +
+    '.cl-tbl .r{text-align:right;font-variant-numeric:tabular-nums}' +
+    '.cl-owed{color:var(--red,#FF3B30);font-weight:600}' +
+    '.amt.owed{color:var(--red,#FF3B30);font-weight:600}' +
+    '.cl-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}' +
+    /* detail header (§9.4) */
+    '.avatar.lg{flex:0 0 64px;width:64px;height:64px;border-radius:50%;font-size:24px}' +
+    '.cl-dh{display:flex;gap:16px;align-items:center}' +
+    '.cl-dh .grow{flex:1;min-width:0}' +
+    '.cl-quick{display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:' + SEP + '}' +
+    '.cl-qa{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:44px;padding:6px 4px;color:var(--tint,#007AFF);text-decoration:none;font-size:12px;font-weight:500}' +
+    '.cl-qa svg{width:22px;height:22px}' +
+    '.cl-qa:active{opacity:.6}' +
+    /* money strip — one grouped card, hairline dividers (like §9.2) */
+    '.cl-money{display:grid;grid-template-columns:1fr 1fr;gap:0;background:var(--bg-grouped-2,#fff);border-radius:12px;overflow:hidden}' +
+    '.cl-money .stat{background:transparent;border:0;box-shadow:none;border-radius:0;padding:16px;min-height:76px}' +
+    '.cl-money .stat:nth-child(odd){border-right:' + SEP + '}' +
+    '.cl-money .stat:nth-child(-n+2){border-bottom:' + SEP + '}' +
+    '.cl-money .stat.alert .n{color:var(--red,#FF3B30)}' +
+    '@media (min-width:900px){.cl-money{grid-template-columns:repeat(4,1fr)}' +
+      '.cl-money .stat:nth-child(-n+2){border-bottom:0}' +
+      '.cl-money .stat:not(:last-child){border-right:' + SEP + '}}' +
+    /* section tabs — §5.3 segmented control */
+    '.cl-tabs{display:flex;gap:2px;background:var(--fill-3,rgba(120,120,128,.12));border-radius:999px;padding:2px;margin:16px 0 4px}' +
+    '.cl-tabs button{flex:1;min-height:32px;padding:4px 6px;border:0;border-radius:999px;background:transparent;font-size:13px;font-weight:500;color:var(--label,#000);cursor:pointer;white-space:nowrap}' +
+    '.cl-tabs button.on{background:var(--bg,#fff);font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.15),0 0 1px rgba(0,0,0,.12)}' +
+    /* contact / property rows inside a grouped list */
+    '.cl-crow{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-bottom:' + SEP + '}' +
+    '.cl-crow:last-child{border-bottom:0}' +
+    '.cl-crow .grow{flex:1;min-width:0}' +
+    /* destructive rows — own final group, red, centred (§9.4) */
+    '.cl-danger-row{justify-content:center;text-align:center;color:var(--red,#FF3B30);font-weight:600}' +
+    '.cl-danger-row:active{background:var(--fill-4,rgba(120,120,128,.08))}' +
+    /* activity date — footnote, secondary */
+    '.cl-date{flex:0 0 auto;font-size:13px;color:var(--label-2,rgba(60,60,67,.6));padding-top:2px}' +
+    /* grouped forms — §9.5: the grouped row IS the field */
+    '.cl-ghead{font-size:13px;color:var(--label-2,rgba(60,60,67,.6));margin:28px 16px 6px}' +
+    '.cl-ghead.first{margin-top:4px}' +
+    '.cl-form{background:var(--bg-grouped-2,#fff);border-radius:12px;overflow:hidden}' +
+    '.cl-frow{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:44px;border-bottom:' + SEP + '}' +
+    '.cl-frow:last-child{border-bottom:0}' +
+    '.cl-flabel{flex:0 0 104px;font-size:17px;color:var(--label,#000)}' +
+    '.cl-frow.err-row .cl-flabel{color:var(--red,#FF3B30)}' +
+    '.cl-frow input,.cl-frow select{flex:1;min-width:0;border:0;background:transparent;min-height:44px;padding:10px 0;font-size:17px;text-align:right;color:var(--label,#000);border-radius:0;box-shadow:none}' +
+    '.cl-frow input.ta-l{text-align:left}' +
+    '.cl-frow input::placeholder,.cl-frow textarea::placeholder{color:var(--placeholder,rgba(60,60,67,.3))}' +
+    '.cl-frow.stack{flex-direction:column;align-items:stretch;gap:2px;padding-top:10px;padding-bottom:10px}' +
+    '.cl-frow.stack .cl-flabel{flex:none}' +
+    '.cl-frow.stack textarea{border:0;background:transparent;width:100%;min-height:88px;font-size:17px;line-height:22px;padding:4px 0;text-align:left;color:var(--label,#000);resize:vertical;border-radius:0;box-shadow:none}' +
+    '.cl-ferr{font-size:13px;color:var(--red,#FF3B30);margin:8px 16px 0}' +
+    '.cl-fhelp{font-size:13px;line-height:18px;color:var(--label-2,rgba(60,60,67,.6));margin:8px 16px 0}' +
+    '.cl-addrow{display:flex;align-items:center;gap:8px;width:100%;padding:0 16px;min-height:48px;background:transparent;border:0;color:var(--tint,#007AFF);font-size:17px;cursor:pointer;text-align:left}' +
+    '.cl-addrow:active{opacity:.6}' +
     '</style>';
 }
 
-/* ---------------- LIST VIEW ---------------- */
+/* ---------------- LIST VIEW ----------------
+   Apple design (§9.3): grouped inset list; 40px initials avatar;
+   title Body 17, subtitle Subheadline secondary (contact · address);
+   trailing is the owed amount (tabular, red when any of it is past
+   due) OR a chevron — never amount + pill + chevron together. The
+   type filter is a §9.7 monochrome pill row. Desktop keeps a §5.8
+   table: hairlines only, no zebra, right-aligned tabular amounts. */
 function clListHTML(){
   var list = clFilteredClients();
   var total = DB.clients.filter(function(c){ return !c.archived; }).length;
@@ -218,9 +296,10 @@ function clListHTML(){
 
   h += '<h2 class="view">Clients</h2>';
 
-  /* toolbar */
+  /* toolbar — §9.3 search field (36px, radius 10, fill background) */
   h += '<div class="toolbar">' +
-    '<input type="text" id="cl-search" placeholder="Search name, contact, address, phone…" value="' + esc(CL.search) + '" autocomplete="off" oninput="CLSearch(this.value)">' +
+    '<span class="t-search cl-search"><span class="s-ic">' + clIcon("search") + '</span>' +
+    '<input type="text" id="cl-search" placeholder="Search clients" value="' + esc(CL.search) + '" autocomplete="off" oninput="CLSearch(this.value)"></span>' +
     '<select id="cl-sort" onchange="CLSort(this.value)" aria-label="Sort clients">' +
       '<option value="name"' + (CL.sort === "name" ? " selected" : "") + '>Sort: Name A–Z</option>' +
       '<option value="owed"' + (CL.sort === "owed" ? " selected" : "") + '>Sort: Most owed</option>' +
@@ -228,9 +307,9 @@ function clListHTML(){
     '</select>' +
     '<button class="btn gold" data-act="cl_new">＋ New Client</button>' +
   '</div>';
-  h += '<div class="chips">' +
+  h += '<div class="chips cl-filters">' +
     [["all", "All"], ["builder", "Builders"], ["homeowner", "Homeowners"], ["commercial", "Commercial"], ["archived", "Archived"]].map(function(pair){
-      return '<button data-act="cl_filter" data-f="' + pair[0] + '"' + (CL.filter === pair[0] ? ' class="on"' : '') + '>' + pair[1] + '</button>';
+      return '<button class="chip' + (CL.filter === pair[0] ? ' on' : '') + '" data-act="cl_filter" data-f="' + pair[0] + '">' + pair[1] + '</button>';
     }).join("") + '</div>';
   h += '<p class="muted small">' +
     (CL.filter === "archived"
@@ -239,19 +318,23 @@ function clListHTML(){
   '</p>';
 
   if(list.length === 0){
-    h += '<div class="empty">' +
-      (CL.filter === "archived" ? "No archived clients."
-        : (CL.search || CL.filter !== "all" ? "No clients match that search/filter." : "No clients yet — tap ＋ New Client to add the first one.")) +
-    '</div>';
+    h += '<div class="empty"><h3>' +
+      (CL.filter === "archived" ? "No Archived Clients"
+        : (CL.search || CL.filter !== "all" ? "No Clients Found" : "No Clients Yet")) +
+      '</h3><p>' +
+      (CL.filter === "archived" ? "Clients you archive will show up here."
+        : (CL.search || CL.filter !== "all" ? "No clients match that search or filter." : "Tap ＋ New Client to add the first one.")) +
+      '</p></div>';
     return h;
   }
 
-  /* phone / narrow: CRM rows */
-  h += '<div class="cl-mobile">';
+  /* phone / narrow: grouped inset rows */
+  h += '<div class="listcard cl-mobile">';
   list.forEach(function(c){
     var addr = clAddressLine(c);
     var ct = clPrimaryContact(c);
     var owed = clientBalanceOwed(c.id);
+    var pastDue = owed > 0 ? clPastDue(c.id) : 0;
     h += '<button class="rowitem" data-act="cl_open" data-id="' + c.id + '">' +
       '<span class="avatar">' + clInitial(c) + '</span>' +
       '<span class="grow"><span class="name">' + esc(c.name) + '</span>' +
@@ -259,26 +342,29 @@ function clListHTML(){
         (ct ? esc(ct.name) + (addr ? " · " : "") : "") + (addr ? esc(addr) : "") +
         (!ct && !addr ? clTypeLabel(c.type) + " · no property on file yet" : "") +
       '</div></span>' +
-      (owed > 0 ? '<span class="amt owed">' + money(owed) + ' owed</span>' : '') +
-      clTypePill(c) + '<span class="chev">›</span></button>';
+      (owed > 0
+        ? '<span class="amt' + (pastDue > 0 ? ' owed' : '') + '">' + money(owed) + '</span>'
+        : '<span class="chev">›</span>') +
+      '</button>';
   });
   h += '</div>';
 
-  /* desktop: table */
-  h += '<div class="cl-desktop card" style="padding:0;overflow:hidden"><table class="cl-tbl"><thead><tr>' +
+  /* desktop: table (§5.8) */
+  h += '<div class="cl-desktop listcard"><table class="cl-tbl"><thead><tr>' +
     '<th>Client</th><th>Type</th><th>Contact</th><th>Properties</th><th class="r">Balance</th><th class="r">Quotes</th><th class="r">Jobs</th><th></th>' +
   '</tr></thead><tbody>';
   list.forEach(function(c){
     var addr = clAddressLine(c);
     var ct = clPrimaryContact(c);
     var owed = clientBalanceOwed(c.id);
+    var pastDue = owed > 0 ? clPastDue(c.id) : 0;
     h += '<tr data-act="cl_open" data-id="' + c.id + '">' +
-      '<td><span style="display:flex;gap:10px;align-items:center"><span class="avatar">' + clInitial(c) + '</span>' +
+      '<td><span style="display:flex;gap:12px;align-items:center"><span class="avatar">' + clInitial(c) + '</span>' +
         '<span><b>' + esc(c.name) + '</b>' + (addr ? '<div class="small muted">' + esc(addr) + '</div>' : '') + '</span></span></td>' +
-      '<td>' + clTypePill(c) + '</td>' +
+      '<td>' + clTypeLabel(c.type) + '</td>' +
       '<td>' + (ct ? esc(ct.name) + (ct.role ? '<div class="small muted">' + esc(ct.role) + '</div>' : '') : '<span class="muted">—</span>') + '</td>' +
       '<td>' + clPropertyCountLabel(c) + '</td>' +
-      '<td class="r">' + (owed > 0 ? '<span class="cl-owed">' + money(owed) + '</span>' : '<span class="muted">—</span>') + '</td>' +
+      '<td class="r">' + (owed > 0 ? '<span' + (pastDue > 0 ? ' class="cl-owed"' : '') + '>' + money(owed) + '</span>' : '<span class="muted">—</span>') + '</td>' +
       '<td class="r">' + clQuotesOf(c.id).length + '</td>' +
       '<td class="r">' + clJobsOf(c.id).length + '</td>' +
       '<td class="r"><span class="chev">›</span></td></tr>';
@@ -287,42 +373,63 @@ function clListHTML(){
   return h;
 }
 
-/* ---------------- CLIENT FORM (new / edit) ---------------- */
+/* ---------------- CLIENT FORM (new / edit) ----------------
+   §9.5 grouped form: one field per row, label leading, value
+   trailing (right-aligned value rows; subject fields left-aligned),
+   no boxed inputs, no floating labels. Errors are a red footnote
+   below the group + a red row label — never a banner or border. */
 function clFormHTML(){
   var isNew = CL.formMode === "new";
   var c = isNew ? { name: "", type: "builder", phone: "", email: "", billingNotes: "", notes: "" }
                 : (clientById(CL.formId) || { name: "", type: "builder", phone: "", email: "", billingNotes: "", notes: "" });
   var sel = function(t){ return String(c.type || "builder").toLowerCase() === t ? " selected" : ""; };
   var h = clStyleTag() + '<button class="backbtn" data-act="cl_cancel_form">← ' + (isNew ? "All clients" : "Back to client") + '</button>';
-  h += '<div class="card"><h3 class="sec" style="margin-top:0">' + (isNew ? "New client" : "Edit client") + '</h3>';
-  if(CL.formErr) h += '<div class="err" style="display:block">' + esc(CL.formErr) + '</div>';
-  h += '<label class="f">Name *</label><input type="text" id="clf-name" value="' + esc(c.name) + '" autocomplete="off">';
-  h += '<label class="f">Type</label><select id="clf-type">' +
-    '<option value="builder"' + sel("builder") + '>Builder</option>' +
-    '<option value="homeowner"' + sel("homeowner") + '>Homeowner</option>' +
-    '<option value="commercial"' + sel("commercial") + '>Commercial</option></select>';
-  h += '<div class="grid2"><div><label class="f">Phone</label><input type="tel" id="clf-phone" value="' + esc(c.phone || "") + '"></div>' +
-       '<div><label class="f">Email</label><input type="email" id="clf-email" value="' + esc(c.email || "") + '"></div></div>';
-  h += '<label class="f">Billing notes</label><textarea id="clf-billing" placeholder="Terms, where invoices go, draw schedule…">' + esc(c.billingNotes || "") + '</textarea>';
-  h += '<label class="f">Notes</label><textarea id="clf-notes">' + esc(c.notes || "") + '</textarea>';
+  h += '<h2 class="view">' + (isNew ? "New Client" : "Edit Client") + '</h2>';
+
+  h += '<div class="cl-form">' +
+    '<div class="cl-frow' + (CL.formErr ? ' err-row' : '') + '"><span class="cl-flabel">Name</span>' +
+      '<input type="text" class="ta-l" id="clf-name" value="' + esc(c.name) + '" autocomplete="off" placeholder="Client name"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Type</span><select id="clf-type">' +
+      '<option value="builder"' + sel("builder") + '>Builder</option>' +
+      '<option value="homeowner"' + sel("homeowner") + '>Homeowner</option>' +
+      '<option value="commercial"' + sel("commercial") + '>Commercial</option></select></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Phone</span>' +
+      '<input type="tel" id="clf-phone" value="' + esc(c.phone || "") + '" autocomplete="tel"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Email</span>' +
+      '<input type="email" id="clf-email" value="' + esc(c.email || "") + '" autocomplete="email"></div>' +
+  '</div>';
+  if(CL.formErr) h += '<p class="cl-ferr">' + esc(CL.formErr) + '</p>';
+
+  h += '<div class="cl-ghead">Billing &amp; notes</div>' +
+    '<div class="cl-form">' +
+    '<div class="cl-frow stack"><span class="cl-flabel">Billing notes</span>' +
+      '<textarea id="clf-billing" placeholder="Terms, where invoices go, draw schedule…">' + esc(c.billingNotes || "") + '</textarea></div>' +
+    '<div class="cl-frow stack"><span class="cl-flabel">Notes</span>' +
+      '<textarea id="clf-notes">' + esc(c.notes || "") + '</textarea></div>' +
+    '</div>' +
+    '<p class="cl-fhelp">Billing notes cover terms and where invoices go — they are used when billing this client.</p>';
 
   if(isNew){
-    h += '<h3 class="sec">First contact <span class="muted small">(optional)</span></h3>' +
-      '<label class="f">Contact name</label><input type="text" id="clf-ct-name" autocomplete="off">' +
-      '<label class="f">Role</label><input type="text" id="clf-ct-role" placeholder="Purchasing, PM, owner…">' +
-      '<div class="grid2"><div><label class="f">Contact phone</label><input type="tel" id="clf-ct-phone"></div>' +
-      '<div><label class="f">Contact email</label><input type="email" id="clf-ct-email"></div></div>';
-    h += '<h3 class="sec">First property <span class="muted small">(optional)</span></h3>' +
-      '<label class="f">Address</label><input type="text" id="clf-p-address" autocomplete="off">' +
-      '<label class="f">Community</label><input type="text" id="clf-p-community">' +
-      '<label class="f">Plan</label><input type="text" id="clf-p-plan">' +
-      '<div class="grid2"><div><label class="f">Living SF</label><input type="number" id="clf-p-living" inputmode="numeric" placeholder="Blank = not on file"></div>' +
-      '<div><label class="f">Under Roof SF</label><input type="number" id="clf-p-roof" inputmode="numeric" placeholder="Blank = not on file"></div></div>';
+    h += '<div class="cl-ghead">First contact (optional)</div>' +
+      '<div class="cl-form">' +
+      '<div class="cl-frow"><span class="cl-flabel">Name</span><input type="text" class="ta-l" id="clf-ct-name" autocomplete="off"></div>' +
+      '<div class="cl-frow"><span class="cl-flabel">Role</span><input type="text" class="ta-l" id="clf-ct-role" placeholder="Purchasing, PM, owner…"></div>' +
+      '<div class="cl-frow"><span class="cl-flabel">Phone</span><input type="tel" id="clf-ct-phone"></div>' +
+      '<div class="cl-frow"><span class="cl-flabel">Email</span><input type="email" id="clf-ct-email"></div>' +
+      '</div>';
+    h += '<div class="cl-ghead">First property (optional)</div>' +
+      '<div class="cl-form">' +
+      '<div class="cl-frow"><span class="cl-flabel">Address</span><input type="text" class="ta-l" id="clf-p-address" autocomplete="off"></div>' +
+      '<div class="cl-frow"><span class="cl-flabel">Community</span><input type="text" class="ta-l" id="clf-p-community"></div>' +
+      '<div class="cl-frow"><span class="cl-flabel">Plan</span><input type="text" class="ta-l" id="clf-p-plan"></div>' +
+      '<div class="cl-frow"><span class="cl-flabel">Living SF</span><input type="number" id="clf-p-living" inputmode="numeric" placeholder="Not on file"></div>' +
+      '<div class="cl-frow"><span class="cl-flabel">Under Roof SF</span><input type="number" id="clf-p-roof" inputmode="numeric" placeholder="Not on file"></div>' +
+      '</div>' +
+      '<p class="cl-fhelp">Square footage: leave blank when it isn\'t on file — it will show as "not on file".</p>';
   }
-  h += '<div class="cl-actions" style="margin-top:16px">' +
-    '<button class="btn gold" data-act="cl_save">' + (isNew ? "Add client" : "Save changes") + '</button>' +
+  h += '<div class="btnrow" style="margin-top:28px">' +
+    '<button class="btn" data-act="cl_save">' + (isNew ? "Add Client" : "Save Changes") + '</button>' +
     '<button class="btn ghost" data-act="cl_cancel_form">Cancel</button></div>';
-  h += '</div>';
   return h;
 }
 /* Pure save step (DOM-free so it can be smoke-tested): vals mirrors the form. */
@@ -365,24 +472,36 @@ function clJobLabel(j){
   return (j.trade || "Electric") + " job";
 }
 function clDetailHTML(c){
-  if(!c) return '<div class="empty">That client no longer exists.</div>';
+  if(!c) return '<div class="empty"><h3>Client Not Found</h3><p>That client no longer exists.</p></div>';
   var cm = clientMoney(c.id);
   var qs = clQuotesOf(c.id), js = clJobsOf(c.id), is = clInvoicesOf(c.id);
   var h = clStyleTag() + '<button class="backbtn" data-act="cl_back">← All clients</button>';
 
-  /* header card */
-  h += '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">' +
-    '<div style="display:flex;gap:12px;align-items:center"><span class="avatar">' + clInitial(c) + '</span>' +
-    '<div><div style="font-size:1.3rem;font-weight:800;line-height:1.2">' + esc(c.name) + '</div>' +
-    '<div style="margin-top:4px">' + clTypePill(c) +
-    (c.archived ? ' <span class="pill grey">Archived</span>' : '') + '</div></div></div>' +
+  /* header block (§9.4): 64px avatar, Title-1 name, secondary
+     subline (type · address), then a quick-action row that only
+     offers actions the data supports — never a dead button. */
+  var addr = clAddressLine(c);
+  var pct = clPrimaryContact(c);
+  var qaPhone = c.phone || (pct && pct.phone) || "";
+  var qaEmail = c.email || (pct && pct.email) || "";
+  var qaProp = (c.properties || []).filter(function(p){ return p.address; })[0] || null;
+  var qa = "";
+  if(qaPhone) qa += '<a class="cl-qa" href="tel:' + esc(qaPhone.replace(/[^+0-9]/g, "")) + '">' + clIcon("phone") + '<span>Call</span></a>';
+  if(qaPhone) qa += '<a class="cl-qa" href="sms:' + esc(qaPhone.replace(/[^+0-9]/g, "")) + '">' + clIcon("message") + '<span>Message</span></a>';
+  if(qaEmail) qa += '<a class="cl-qa" href="mailto:' + esc(qaEmail) + '">' + clIcon("mail") + '<span>Email</span></a>';
+  if(qaProp) qa += '<a class="cl-qa" href="https://maps.apple.com/?q=' + encodeURIComponent(qaProp.address) + '" target="_blank" rel="noopener">' + clIcon("pin") + '<span>Directions</span></a>';
+
+  h += '<div class="dhead"><div class="cl-dh">' +
+    '<span class="avatar lg">' + clInitial(c) + '</span>' +
+    '<div class="grow"><div class="dh-name">' + esc(c.name) + '</div>' +
+    '<div class="dh-sub">' + clTypeLabel(c.type) +
+      (c.archived ? ' · Archived' : '') +
+      (addr ? ' · ' + esc(addr) : '') + '</div></div>' +
     '<div class="cl-actions">' +
-      '<button class="btn" data-act="cl_edit" data-id="' + c.id + '">Edit</button>' +
-      (c.archived
-        ? '<button class="btn" data-act="cl_restore" data-id="' + c.id + '">Restore</button>' +
-          '<button class="btn ghost" data-act="cl_delete" data-id="' + c.id + '">Delete permanently</button>'
-        : '<button class="btn ghost" data-act="cl_archive" data-id="' + c.id + '">Archive</button>') +
+      '<button class="btn sm" data-act="cl_edit" data-id="' + c.id + '">Edit</button>' +
+      (c.archived ? '<button class="btn sm ghost" data-act="cl_restore" data-id="' + c.id + '">Restore</button>' : '') +
     '</div></div>';
+  if(qa) h += '<div class="cl-quick">' + qa + '</div>';
   if(c.phone) h += '<div class="kv"><span class="k">Phone</span><span class="v">' + esc(c.phone) + '</span></div>';
   if(c.email) h += '<div class="kv"><span class="k">Email</span><span class="v">' + esc(c.email) + '</span></div>';
   if(c.billingNotes) h += '<div class="kv"><span class="k">Billing notes</span><span class="v">' + esc(c.billingNotes) + '</span></div>';
@@ -391,16 +510,17 @@ function clDetailHTML(c){
     h += '<p class="muted small" style="margin-bottom:0">No phone, email or notes on file yet — tap Edit to add them.</p>';
   h += '</div>';
 
-  /* money strip */
+  /* money strip — one grouped card with hairline dividers (§9.2) */
   h += '<div class="cl-money stats">' +
-    '<div class="stat"><div class="n">' + money(cm.quoted) + '</div><div class="l">Quoted</div></div>' +
-    '<div class="stat"><div class="n">' + money(cm.invoiced) + '</div><div class="l">Invoiced</div></div>' +
-    '<div class="stat"><div class="n">' + money(cm.paid) + '</div><div class="l">Paid</div></div>' +
-    '<div class="stat' + (cm.owed > 0 ? " alert" : "") + '"><div class="n">' + money(cm.owed) + '</div><div class="l">Balance owed</div></div></div>';
+    '<div class="stat"><div class="l">Quoted</div><div class="n">' + money(cm.quoted) + '</div></div>' +
+    '<div class="stat"><div class="l">Invoiced</div><div class="n">' + money(cm.invoiced) + '</div></div>' +
+    '<div class="stat"><div class="l">Paid</div><div class="n">' + money(cm.paid) + '</div></div>' +
+    '<div class="stat' + (cm.owed > 0 ? " alert" : "") + '"><div class="l">Balance owed</div><div class="n">' + money(cm.owed) + '</div></div></div>';
 
-  /* section tabs */
-  var tabs = [["overview", "Overview"], ["quotes", "Quotes (" + qs.length + ")"],
-              ["jobs", "Jobs (" + js.length + ")"], ["invoices", "Invoices (" + is.length + ")"],
+  /* section tabs — segmented control (§5.3); counts live in the
+     section headers, not the segments */
+  var tabs = [["overview", "Overview"], ["quotes", "Quotes"],
+              ["jobs", "Jobs"], ["invoices", "Invoices"],
               ["activity", "Activity"]];
   h += '<div class="cl-tabs">' + tabs.map(function(t){
     return '<button data-act="cl_tab" data-t="' + t[0] + '"' + (CL.detailTab === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>';
@@ -411,136 +531,168 @@ function clDetailHTML(c){
   else if(CL.detailTab === "jobs") h += clRecordListHTML("jobs", c, js);
   else if(CL.detailTab === "invoices") h += clRecordListHTML("invoices", c, is);
   else if(CL.detailTab === "activity") h += clActivityHTML(c);
+
+  /* destructive group — last, alone, red (§9.4) */
+  h += '<div class="listcard" style="margin-top:28px"><button class="rowitem cl-danger-row" data-act="' +
+    (c.archived ? 'cl_delete' : 'cl_archive') + '" data-id="' + c.id + '">' +
+    (c.archived ? 'Delete Permanently' : 'Archive Client') + '</button></div>';
   return h;
 }
 
 function clOverviewHTML(c){
   var h = "";
-  /* contacts */
-  h += '<h3 class="sec">Contacts (' + (c.contacts || []).length + ')</h3>';
-  if((c.contacts || []).length === 0) h += '<div class="empty">No contacts on file for this client yet.</div>';
-  (c.contacts || []).forEach(function(ct){
-    if(CL.contactEditId === ct.id){
-      h += '<div class="card"><b>Edit contact</b>' +
-        '<label class="f">Name *</label><input type="text" id="cle-name" value="' + esc(ct.name) + '">' +
-        '<label class="f">Role</label><input type="text" id="cle-role" value="' + esc(ct.role || "") + '">' +
-        '<div class="grid2"><div><label class="f">Phone</label><input type="tel" id="cle-phone" value="' + esc(ct.phone || "") + '"></div>' +
-        '<div><label class="f">Email</label><input type="email" id="cle-email" value="' + esc(ct.email || "") + '"></div></div>' +
-        '<div class="cl-actions" style="margin-top:12px"><button class="btn" data-act="cl_contact_save" data-id="' + ct.id + '">Save contact</button>' +
-        '<button class="btn ghost" data-act="cl_contact_cancel">Cancel</button></div></div>';
-    } else {
-      h += '<div class="card" style="padding:13px 16px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">' +
-        '<div><b>' + esc(ct.name) + '</b>' + (ct.role ? ' <span class="muted">· ' + esc(ct.role) + '</span>' : '') +
-        (ct.phone ? '<div class="small muted">Phone: ' + esc(ct.phone) + '</div>' : '') +
-        (ct.email ? '<div class="small muted">Email: ' + esc(ct.email) + '</div>' : '') + '</div>' +
-        '<span class="cl-actions"><button class="btn ghost" data-act="cl_contact_edit" data-id="' + ct.id + '">Edit</button>' +
-        '<button class="btn ghost" data-act="cl_contact_del" data-id="' + ct.id + '">Delete</button></span></div></div>';
-    }
-  });
-  h += '<div class="card"><b>Add a contact</b>' +
-    '<label class="f">Name *</label><input type="text" id="cla-name">' +
-    '<label class="f">Role</label><input type="text" id="cla-role" placeholder="Purchasing, PM, homeowner…">' +
-    '<div class="grid2"><div><label class="f">Phone</label><input type="tel" id="cla-phone"></div>' +
-    '<div><label class="f">Email</label><input type="email" id="cla-email"></div></div>' +
-    '<button class="btn block" data-act="cl_contact_add" style="margin-top:14px">Add contact</button></div>';
+  /* contacts — view rows grouped in ONE listcard; an open edit form
+     renders as its own §9.5 grouped form below the list */
+  var cts = c.contacts || [];
+  h += '<h3 class="sec">Contacts (' + cts.length + ')</h3>';
+  if(cts.length === 0){
+    h += '<div class="empty"><h3>No Contacts Yet</h3><p>No contacts on file for this client yet.</p></div>';
+  } else {
+    var crows = "", cedit = "";
+    cts.forEach(function(ct){
+      if(CL.contactEditId === ct.id){
+        cedit = '<div class="cl-ghead first">Edit contact</div><div class="cl-form">' +
+          '<div class="cl-frow"><span class="cl-flabel">Name</span><input type="text" class="ta-l" id="cle-name" value="' + esc(ct.name) + '"></div>' +
+          '<div class="cl-frow"><span class="cl-flabel">Role</span><input type="text" class="ta-l" id="cle-role" value="' + esc(ct.role || "") + '"></div>' +
+          '<div class="cl-frow"><span class="cl-flabel">Phone</span><input type="tel" id="cle-phone" value="' + esc(ct.phone || "") + '"></div>' +
+          '<div class="cl-frow"><span class="cl-flabel">Email</span><input type="email" id="cle-email" value="' + esc(ct.email || "") + '"></div>' +
+          '</div>' +
+          '<div class="btnrow" style="margin-top:12px"><button class="btn" data-act="cl_contact_save" data-id="' + ct.id + '">Save Contact</button>' +
+          '<button class="btn ghost" data-act="cl_contact_cancel">Cancel</button></div>';
+      } else {
+        crows += '<div class="cl-crow">' +
+          '<div class="grow"><b>' + esc(ct.name) + '</b>' + (ct.role ? ' <span class="muted">· ' + esc(ct.role) + '</span>' : '') +
+          (ct.phone ? '<div class="small muted">Phone: ' + esc(ct.phone) + '</div>' : '') +
+          (ct.email ? '<div class="small muted">Email: ' + esc(ct.email) + '</div>' : '') + '</div>' +
+          '<span class="cl-actions"><button class="btn ghost sm" data-act="cl_contact_edit" data-id="' + ct.id + '">Edit</button>' +
+          '<button class="btn ghost sm" data-act="cl_contact_del" data-id="' + ct.id + '">Delete</button></span></div>';
+      }
+    });
+    if(crows) h += '<div class="listcard">' + crows + '</div>';
+    h += cedit;
+  }
+  h += '<div class="cl-ghead">Add a contact</div><div class="cl-form">' +
+    '<div class="cl-frow"><span class="cl-flabel">Name</span><input type="text" class="ta-l" id="cla-name"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Role</span><input type="text" class="ta-l" id="cla-role" placeholder="Purchasing, PM, homeowner…"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Phone</span><input type="tel" id="cla-phone"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Email</span><input type="email" id="cla-email"></div>' +
+    '<button class="cl-addrow" data-act="cl_contact_add">+ Add Contact</button></div>';
 
-  /* properties */
-  h += '<h3 class="sec">Properties (' + (c.properties || []).length + ')</h3>';
-  if((c.properties || []).length === 0) h += '<div class="empty">No properties on file for this client yet.</div>';
-  (c.properties || []).forEach(function(p){
-    if(CL.propEditId === p.id){
-      h += '<div class="card"><b>Edit property</b>' +
-        '<label class="f">Address</label><input type="text" id="clpe-address" value="' + esc(p.address || "") + '">' +
-        '<label class="f">Community</label><input type="text" id="clpe-community" value="' + esc(p.community || "") + '">' +
-        '<label class="f">Plan</label><input type="text" id="clpe-plan" value="' + esc(p.plan || "") + '">' +
-        '<div class="grid2"><div><label class="f">Living SF</label><input type="number" id="clpe-living" inputmode="numeric" value="' + esc(p.livingSF || "") + '" placeholder="Blank = not on file"></div>' +
-        '<div><label class="f">Under Roof SF</label><input type="number" id="clpe-roof" inputmode="numeric" value="' + esc(p.roofSF || "") + '" placeholder="Blank = not on file"></div></div>' +
-        '<div class="cl-actions" style="margin-top:12px"><button class="btn" data-act="cl_prop_save" data-id="' + p.id + '">Save property</button>' +
-        '<button class="btn ghost" data-act="cl_prop_cancel">Cancel</button></div></div>';
-    } else {
-      h += '<div class="card" style="padding:13px 16px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">' +
-        '<div><b>' + esc(p.community || p.address || "—") + '</b>' +
-        (p.community && p.address ? ' <span class="muted">· ' + esc(p.address) + '</span>' : '') +
-        (p.plan ? '<div class="small muted">Plan: ' + esc(p.plan) + '</div>' : '') +
-        '<div class="small muted">Living SF: ' + (p.livingSF ? esc(p.livingSF) : "not on file") +
-        ' · Under Roof SF: ' + (p.roofSF ? esc(p.roofSF) : "not on file") + '</div></div>' +
-        '<span class="cl-actions"><button class="btn ghost" data-act="cl_prop_edit" data-id="' + p.id + '">Edit</button>' +
-        '<button class="btn ghost" data-act="cl_prop_del" data-id="' + p.id + '">Delete</button></span></div></div>';
-    }
-  });
-  h += '<div class="card"><b>Add a property</b>' +
-    '<label class="f">Address</label><input type="text" id="clp-address">' +
-    '<label class="f">Community</label><input type="text" id="clp-community">' +
-    '<label class="f">Plan</label><input type="text" id="clp-plan">' +
-    '<div class="grid2"><div><label class="f">Living SF</label><input type="number" id="clp-living" inputmode="numeric" placeholder="Blank = not on file"></div>' +
-    '<div><label class="f">Under Roof SF</label><input type="number" id="clp-roof" inputmode="numeric" placeholder="Blank = not on file"></div></div>' +
-    '<button class="btn block" data-act="cl_prop_add" style="margin-top:14px">Add property</button></div>';
+  /* properties — same grouped pattern */
+  var prs = c.properties || [];
+  h += '<h3 class="sec">Properties (' + prs.length + ')</h3>';
+  if(prs.length === 0){
+    h += '<div class="empty"><h3>No Properties Yet</h3><p>No properties on file for this client yet.</p></div>';
+  } else {
+    var prows = "", pedit = "";
+    prs.forEach(function(p){
+      if(CL.propEditId === p.id){
+        pedit = '<div class="cl-ghead first">Edit property</div><div class="cl-form">' +
+          '<div class="cl-frow"><span class="cl-flabel">Address</span><input type="text" class="ta-l" id="clpe-address" value="' + esc(p.address || "") + '"></div>' +
+          '<div class="cl-frow"><span class="cl-flabel">Community</span><input type="text" class="ta-l" id="clpe-community" value="' + esc(p.community || "") + '"></div>' +
+          '<div class="cl-frow"><span class="cl-flabel">Plan</span><input type="text" class="ta-l" id="clpe-plan" value="' + esc(p.plan || "") + '"></div>' +
+          '<div class="cl-frow"><span class="cl-flabel">Living SF</span><input type="number" id="clpe-living" inputmode="numeric" value="' + esc(p.livingSF || "") + '" placeholder="Not on file"></div>' +
+          '<div class="cl-frow"><span class="cl-flabel">Under Roof SF</span><input type="number" id="clpe-roof" inputmode="numeric" value="' + esc(p.roofSF || "") + '" placeholder="Not on file"></div>' +
+          '</div>' +
+          '<div class="btnrow" style="margin-top:12px"><button class="btn" data-act="cl_prop_save" data-id="' + p.id + '">Save Property</button>' +
+          '<button class="btn ghost" data-act="cl_prop_cancel">Cancel</button></div>';
+      } else {
+        prows += '<div class="cl-crow">' +
+          '<div class="grow"><b>' + esc(p.community || p.address || "—") + '</b>' +
+          (p.community && p.address ? ' <span class="muted">· ' + esc(p.address) + '</span>' : '') +
+          (p.plan ? '<div class="small muted">Plan: ' + esc(p.plan) + '</div>' : '') +
+          '<div class="small muted">Living SF: ' + (p.livingSF ? esc(p.livingSF) : "not on file") +
+          ' · Under Roof SF: ' + (p.roofSF ? esc(p.roofSF) : "not on file") + '</div></div>' +
+          '<span class="cl-actions"><button class="btn ghost sm" data-act="cl_prop_edit" data-id="' + p.id + '">Edit</button>' +
+          '<button class="btn ghost sm" data-act="cl_prop_del" data-id="' + p.id + '">Delete</button></span></div>';
+      }
+    });
+    if(prows) h += '<div class="listcard">' + prows + '</div>';
+    h += pedit;
+  }
+  h += '<div class="cl-ghead">Add a property</div><div class="cl-form">' +
+    '<div class="cl-frow"><span class="cl-flabel">Address</span><input type="text" class="ta-l" id="clp-address"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Community</span><input type="text" class="ta-l" id="clp-community"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Plan</span><input type="text" class="ta-l" id="clp-plan"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Living SF</span><input type="number" id="clp-living" inputmode="numeric" placeholder="Not on file"></div>' +
+    '<div class="cl-frow"><span class="cl-flabel">Under Roof SF</span><input type="number" id="clp-roof" inputmode="numeric" placeholder="Not on file"></div>' +
+    '<button class="cl-addrow" data-act="cl_prop_add">+ Add Property</button></div>' +
+    '<p class="cl-fhelp">Square footage: leave blank when it isn\'t on file — it will show as "not on file".</p>';
   return h;
 }
 
+/* Record rows (§9.3): grouped list; trailing column is the amount
+   over the status pill — no chevron stacked next to a pill. */
 function clRecordListHTML(kind, c, list){
   var h = "";
   if(kind === "quotes"){
     h += '<h3 class="sec">Quotes (' + list.length + ')</h3>';
-    if(list.length === 0) h += '<div class="empty">No quotes for this client yet.</div>';
+    if(list.length === 0) return h + '<div class="empty"><h3>No Quotes Yet</h3><p>No quotes for this client yet.</p></div>';
+    h += '<div class="listcard">';
     list.slice().sort(function(a, b){ return String(b.createdAt || "") < String(a.createdAt || "") ? -1 : 1; }).forEach(function(q){
       h += '<button class="rowitem" data-act="cl_open_quote" data-id="' + q.id + '"><span class="grow">' +
         '<span class="name">' + q.number + ' · ' + esc(quoteTitle(q)) + '</span>' +
         '<div class="meta">' + q.trade + ' · ' + fmtDate(q.createdAt) + '</div></span>' +
-        '<span class="amt">' + money(quoteTotal(q)) + '</span>' + quotePill(q.status) + '<span class="chev">›</span></button>';
+        '<span class="side"><span class="amt">' + money(quoteTotal(q)) + '</span>' + quotePill(q.status) + '</span></button>';
     });
+    h += '</div>';
   } else if(kind === "jobs"){
     h += '<h3 class="sec">Jobs (' + list.length + ')</h3>';
-    if(list.length === 0) h += '<div class="empty">No jobs for this client yet.</div>';
+    if(list.length === 0) return h + '<div class="empty"><h3>No Jobs Yet</h3><p>No jobs for this client yet.</p></div>';
+    h += '<div class="listcard">';
     list.slice().sort(function(a, b){ return String(b.createdAt || "") < String(a.createdAt || "") ? -1 : 1; }).forEach(function(j){
       h += '<button class="rowitem" data-act="cl_open_job" data-id="' + j.id + '"><span class="grow">' +
         '<span class="name">' + esc(clJobLabel(j)) + '</span>' +
         '<div class="meta">' + (j.trade || "") + ' · ' + jobDoneCount(j) + ' of 5 stages done' + (j.createdAt ? ' · ' + fmtDate(j.createdAt) : '') + '</div></span>' +
-        '<span class="amt">' + money(jobAmount(j)) + '</span>' + jobPill(j) + '<span class="chev">›</span></button>';
+        '<span class="side"><span class="amt">' + money(jobAmount(j)) + '</span>' + jobPill(j) + '</span></button>';
     });
+    h += '</div>';
   } else {
     h += '<h3 class="sec">Invoices (' + list.length + ')</h3>';
-    if(list.length === 0) h += '<div class="empty">No invoices for this client yet.</div>';
+    if(list.length === 0) return h + '<div class="empty"><h3>No Invoices Yet</h3><p>No invoices for this client yet.</p></div>';
+    h += '<div class="listcard">';
     list.slice().sort(function(a, b){ return String(b.createdAt || "") < String(a.createdAt || "") ? -1 : 1; }).forEach(function(inv){
       var bal = invoiceBalance(inv);
       h += '<button class="rowitem" data-act="cl_open_invoice" data-id="' + inv.id + '"><span class="grow">' +
         '<span class="name">' + inv.number + '</span>' +
         '<div class="meta">' + fmtDate(inv.sentAt || inv.createdAt) + (bal > 0 && inv.status !== "Draft" ? ' · ' + money(bal) + ' balance' : '') + '</div></span>' +
-        '<span class="amt">' + money(inv.amount) + '</span>' + invoicePill(inv) + '<span class="chev">›</span></button>';
+        '<span class="side"><span class="amt">' + money(inv.amount) + '</span>' + invoicePill(inv) + '</span></button>';
     });
+    h += '</div>';
   }
   return h;
 }
 
-/* Merged timeline of the client's quotes, jobs, invoices + payments. */
+/* Merged timeline of the client's quotes, jobs, invoices + payments.
+   Apple design: plain grouped rows — the kind rides in the meta line
+   (no uppercase badge tiles), the date is a footnote trailing. */
 function clActivityHTML(c){
   var ev = [];
   clQuotesOf(c.id).forEach(function(q){
-    ev.push({ date: q.createdAt || "", kind: "QUOTE", act: "cl_open_quote", id: q.id,
+    ev.push({ date: q.createdAt || "", kind: "Quote", act: "cl_open_quote", id: q.id,
       text: q.number + " — " + quoteTitle(q), sub: q.status + " · " + money(quoteTotal(q)) });
   });
   clJobsOf(c.id).forEach(function(j){
-    ev.push({ date: j.createdAt || "", kind: "JOB", act: "cl_open_job", id: j.id,
+    ev.push({ date: j.createdAt || "", kind: "Job", act: "cl_open_job", id: j.id,
       text: clJobLabel(j), sub: jobDisplayStatus(j) + " · " + jobDoneCount(j) + " of 5 stages done · " + money(jobAmount(j)) });
   });
   clInvoicesOf(c.id).forEach(function(inv){
-    ev.push({ date: inv.createdAt || "", kind: "INVOICE", act: "cl_open_invoice", id: inv.id,
+    ev.push({ date: inv.createdAt || "", kind: "Invoice", act: "cl_open_invoice", id: inv.id,
       text: inv.number, sub: displayInvoiceStatus(inv) + " · " + money(inv.amount) });
     (inv.payments || []).forEach(function(p){
-      ev.push({ date: p.date || inv.createdAt || "", kind: "PAYMENT", act: "cl_open_invoice", id: inv.id,
+      ev.push({ date: p.date || inv.createdAt || "", kind: "Payment", act: "cl_open_invoice", id: inv.id,
         text: "Payment on " + inv.number, sub: money(p.amount) + (p.method ? " · " + p.method : "") + (p.ref ? " · " + p.ref : "") });
     });
   });
   ev.sort(function(a, b){ return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
   var h = '<h3 class="sec">Activity (' + ev.length + ')</h3>';
-  if(ev.length === 0) return h + '<div class="empty">No activity for this client yet.</div>';
-  h += '<div class="card">';
+  if(ev.length === 0) return h + '<div class="empty"><h3>No Activity Yet</h3><p>No activity for this client yet.</p></div>';
+  h += '<div class="listcard">';
   ev.forEach(function(e){
-    h += '<div class="cl-tl"><span class="cl-badge">' + e.kind + '</span>' +
-      '<span class="grow"><button class="rowitem" style="border:none;padding:0;min-height:0" data-act="' + e.act + '" data-id="' + e.id + '">' +
+    h += '<button class="rowitem" data-act="' + e.act + '" data-id="' + e.id + '">' +
       '<span class="grow"><span class="name">' + esc(e.text) + '</span>' +
-      '<div class="meta">' + esc(e.sub) + '</div></span><span class="chev">›</span></button></span>' +
-      '<span class="muted small" style="flex:0 0 auto">' + (e.date ? fmtDate(e.date) : "") + '</span></div>';
+      '<div class="meta">' + e.kind + ' · ' + esc(e.sub) + '</div></span>' +
+      '<span class="cl-date">' + (e.date ? fmtDate(e.date) : "") + '</span></button>';
   });
   h += '</div>';
   return h;

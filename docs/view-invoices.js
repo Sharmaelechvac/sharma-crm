@@ -1,9 +1,19 @@
 /* ============================================================================
-   SHARMA360 CRM v3 — INVOICES module (view-invoices.js)
-   Jobber-style invoice workflow: summary strip, searchable/filterable list,
+   SHARMA360 CRM v4 — INVOICES module (view-invoices.js)
+   Invoice workflow: summary strip, searchable/filterable list,
    the Invoice Maker (from scratch with line items + product picker, or from
    a job at full amount / stage-draw %), invoice detail with partial-payment
    recording, and a printable invoice document.
+   v4: Apple-design restyle (grouped stat group, .dhead detail header with
+   hero amount, §9.6 item rows, §9.8 .doc document — DRAFT is now the quiet
+   .tag-draft in the header, no diagonal watermark). Data logic, ACTIONS /
+   VIEWS names and price gates are unchanged from v3.
+   New class hooks introduced for style.css: .inv-head (parallel to
+   .q-head), .inv-count, .inv-search, .inv-sort, .trail (row trailing
+   column: amount over pill), .items/.lrow (grouped line-item rows),
+   .addrow (tint add-line row), .dangerzone (bottom destructive group),
+   .doc-rule (doc hairline), .dh-num/.dh-pills/.dh-hero (detail-header
+   family, joining core's .dh-top/.dh-sub/.dh-actions).
 
    Registers:  VIEWS.invoices, ACTIONS.inv_*  (all actions prefixed "inv_").
 
@@ -29,11 +39,11 @@
      shape, harmless to the data layer): `lines` [{desc,qty,price}] for
      from-scratch invoices, and `notes`.
    - CSS: the document uses core's .doc system (.doc-head/.doc-co/.doc-title/
-     .doc-num/.doc-parties/.doc-totals/.wm/.doc-foot — core's @media print
+     .doc-num/.doc-parties/.doc-totals/.doc-foot — core's @media print
      shows only .doc), the detail uses .dhead + .detail-grid/.col-main/
-     .col-side + .btnrow, totals use .lines-total/.grand, and lists reuse
-     .stats/.stat, .chips, .rowitem, table.lines, .segbtns, .linerow.
-     Classes this module introduces (style.css should define them):
+     .col-side + .dh-actions, totals use .lines-total/.grand, and lists reuse
+     .stats/.stat, .chips, .rowitem, .segbtns, .linerow.
+     Classes this module uses (style.css should define them):
        .invtable / .inv-tablewrap / .inv-rowswrap — desktop table vs phone
          rows (hide .inv-tablewrap below 900px, .inv-rowswrap at ≥900px)
        .tag-draft — the red "DRAFT — not sent" tag (was in the v2 CSS).
@@ -148,20 +158,22 @@ function invListHTML(){
   const s = invSummary();
   const list = invFiltered();
   let h = "";
+  h += '<div class="inv-head"><h2 class="view">Invoices</h2>' +
+    '<button class="btn gold" data-act="inv_new">+ New Invoice</button></div>';
   if(INV.flash) h += '<div class="okmsg">' + esc(INV.flash) + "</div>";
 
-  /* summary strip */
+  /* summary strip — one grouped stat card, hairline dividers (§9.2) */
   h += '<div class="stats">' +
-    '<div class="stat"><div class="n" style="font-size:1.35rem">' + money(s.awaiting) + '</div><div class="l">Awaiting payment</div><div class="s">' + s.awaitingN + (s.awaitingN === 1 ? " invoice" : " invoices") + "</div></div>" +
-    '<div class="stat' + (s.pastDue > 0 ? " alert" : "") + '"><div class="n" style="font-size:1.35rem">' + money(s.pastDue) + '</div><div class="l">Past due</div><div class="s">' + s.pastDueN + (s.pastDueN === 1 ? " invoice" : " invoices") + "</div></div>" +
-    '<div class="stat"><div class="n" style="font-size:1.35rem">' + money(s.paidMonth) + '</div><div class="l">Paid this month</div><div class="s">' + s.paidMonthN + (s.paidMonthN === 1 ? " payment" : " payments") + "</div></div>" +
+    '<div class="stat"><div class="n">' + money(s.awaiting) + '</div><div class="l">Awaiting payment</div><div class="s">' + s.awaitingN + (s.awaitingN === 1 ? " invoice" : " invoices") + "</div></div>" +
+    '<div class="stat' + (s.pastDue > 0 ? " alert" : "") + '"><div class="n">' + money(s.pastDue) + '</div><div class="l">Past due</div><div class="s">' + s.pastDueN + (s.pastDueN === 1 ? " invoice" : " invoices") + "</div></div>" +
+    '<div class="stat"><div class="n">' + money(s.paidMonth) + '</div><div class="l">Paid this month</div><div class="s">' + s.paidMonthN + (s.paidMonthN === 1 ? " payment" : " payments") + "</div></div>" +
     '<div class="stat"><div class="n">' + s.draftN + '</div><div class="l">Drafts</div><div class="s">' + money(s.draftTotal) + " not sent</div></div>" +
     "</div>";
 
   /* toolbar */
-  h += '<div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-    '<input type="text" id="inv-q" placeholder="Search invoice # or client…" value="' + esc(INV.q) + '" autocomplete="off" style="flex:1;min-width:180px">' +
-    '<select id="inv-sort" aria-label="Sort invoices">' +
+  h += '<div class="toolbar">' +
+    '<input type="search" id="inv-q" class="inv-search" placeholder="Search invoice # or client…" value="' + esc(INV.q) + '" autocomplete="off">' +
+    '<select id="inv-sort" class="inv-sort" aria-label="Sort invoices">' +
       '<option value="new"' + (INV.sort === "new" ? " selected" : "") + ">Newest first</option>" +
       '<option value="old"' + (INV.sort === "old" ? " selected" : "") + ">Oldest first</option>" +
       '<option value="amt"' + (INV.sort === "amt" ? " selected" : "") + ">Amount — high to low</option>" +
@@ -169,8 +181,7 @@ function invListHTML(){
     "</select></div>";
   h += '<div class="chips">' + INV_FILTERS.map(f =>
       '<button data-act="inv_filter" data-f="' + f + '"' + (INV.filter === f ? ' class="on"' : "") + ">" + f + "</button>").join("") + "</div>";
-  h += '<button class="btn gold block" data-act="inv_new" style="margin:10px 0">＋ New Invoice</button>';
-  h += '<p class="muted small">Showing ' + list.length + " of " + DB.invoices.length + " invoices</p>";
+  h += '<div class="inv-count">Showing ' + list.length + " of " + DB.invoices.length + " invoices</div>";
 
   if(DB.invoices.length === 0){
     h += '<div class="empty">No invoices yet. Build the first one with the Invoice Maker — from scratch, or straight from a job.</div>';
@@ -181,25 +192,26 @@ function invListHTML(){
     return h;
   }
 
-  /* desktop table */
+  /* desktop table (§5.8: no vertical borders/zebra/coloured header,
+     44px rows, right-aligned tabular amounts) */
   h += '<div class="inv-tablewrap"><table class="invtable lines"><thead><tr>' +
     "<th>Invoice #</th><th>Client</th><th>Job</th><th>Issued</th>" +
-    '<th style="text-align:right">Amount</th><th style="text-align:right">Balance</th><th>Status</th>' +
+    '<th class="r">Amount</th><th class="r">Balance</th><th>Status</th>' +
     "</tr></thead><tbody>";
   list.forEach(inv => {
     const bal = invoiceBalance(inv);
-    h += '<tr data-act="inv_open" data-id="' + inv.id + '" style="cursor:pointer">' +
-      "<td><b>" + esc(inv.number) + "</b></td>" +
+    h += '<tr data-act="inv_open" data-id="' + inv.id + '">' +
+      "<td>" + esc(inv.number) + "</td>" +
       "<td>" + esc(invClientName(inv)) + "</td>" +
       "<td>" + esc(invJobLabel(inv)) + "</td>" +
       "<td>" + fmtDate(inv.createdAt) + "</td>" +
-      '<td style="text-align:right">' + money(inv.amount) + "</td>" +
-      '<td style="text-align:right">' + (bal > 0 ? money(bal) : "—") + "</td>" +
+      '<td class="r">' + money(inv.amount) + "</td>" +
+      '<td class="r">' + (bal > 0 ? money(bal) : "—") + "</td>" +
       "<td>" + invoicePill(inv) + "</td></tr>";
   });
   h += "</tbody></table></div>";
 
-  /* phone rows */
+  /* phone rows (§9.3: trailing column = amount over pill, no chevron) */
   h += '<div class="inv-rowswrap">';
   list.forEach(inv => {
     const bal = invoiceBalance(inv);
@@ -209,9 +221,9 @@ function invListHTML(){
       '<span class="grow"><span class="name">' + esc(inv.number) + " · " + esc(invClientName(inv)) + "</span>" +
       '<div class="meta">' + esc(invJobLabel(inv)) + " · Issued " + fmtDate(inv.createdAt) +
         (inv.basis === "draw" ? " · Draw " + inv.drawPct + "%" : "") + "</div></span>" +
-      '<span class="amt">' + money(inv.amount) +
-        (bal > 0 && inv.status !== "Draft" ? '<br><span class="small" style="color:var(--red)">' + money(bal) + " owed</span>" : "") + "</span>" +
-      invoicePill(inv) + '<span class="chev">›</span></button>';
+      '<span class="trail"><span class="amt">' + money(inv.amount) + "</span>" +
+        (bal > 0 && inv.status !== "Draft" ? '<span class="amt owed">' + money(bal) + " owed</span>" : "") +
+      invoicePill(inv) + "</span></button>";
   });
   h += "</div>";
   return h;
@@ -299,15 +311,15 @@ function invSyncDraft(){
 function invLineRowHTML(l){
   l = l || { desc: "", qty: 1, price: "" };
   return '<div class="linerow"><input type="text" class="li-desc" placeholder="Description" value="' + esc(l.desc) + '">' +
-    '<input type="number" class="li-qty" min="0" step="any" value="' + esc(l.qty) + '" aria-label="Quantity">' +
-    '<input type="number" class="li-price" min="0" step="any" placeholder="$ Unit price" value="' + esc(l.price) + '" aria-label="Unit price">' +
+    '<input type="number" class="li-qty" min="0" step="any" inputmode="decimal" value="' + esc(l.qty) + '" aria-label="Quantity">' +
+    '<input type="number" class="li-price" min="0" step="any" inputmode="decimal" placeholder="$ Unit price" value="' + esc(l.price) + '" aria-label="Unit price">' +
     '<button type="button" class="del" data-act="inv_delLine" title="Remove line">✕</button></div>';
 }
 function invProductPickerHTML(){
   const cats = {};
   PRODUCTS.forEach((p, i) => { (cats[p.category] = cats[p.category] || []).push(i); });
   let h = '<label class="f">Add a line from the product library</label>' +
-    '<div style="display:flex;gap:8px"><select id="invf-product" style="flex:1"><option value="">Pick a product…</option>';
+    '<div class="prodrow"><select id="invf-product"><option value="">Pick a product…</option>';
   Object.keys(cats).sort().forEach(cat => {
     h += '<optgroup label="' + esc(invCatLabel(cat)) + '">';
     cats[cat].forEach(i => {
@@ -316,7 +328,7 @@ function invProductPickerHTML(){
     });
     h += "</optgroup>";
   });
-  h += '</select><button type="button" class="btn ghost" data-act="inv_addProduct" style="min-height:52px">Add</button></div>' +
+  h += '</select><button type="button" class="btn ghost" data-act="inv_addProduct">Add</button></div>' +
     '<p class="muted small">The picker fills the description and model only — the price stays blank for the Owner to price. Prices are never pulled in automatically.</p>';
   return h;
 }
@@ -332,19 +344,22 @@ function invJobOptions(selectedId, clientId){
 function invMakerHTML(){
   const d = INV.draft;
   const editing = INV.editingId ? invoiceById(INV.editingId) : null;
-  let h = '<div class="card" id="invoiceform"><h3 class="sec" style="margin-top:0">' +
-    (editing ? "Edit invoice " + esc(editing.number) : "Invoice Maker — new invoice") + "</h3>";
+  let h = '<div id="invoiceform">';
   if(!invIsOwner()){
-    h += '<p class="muted">Only the Owner can build or edit invoices — prices are the Owner\'s call. ' +
+    h += '<div class="card"><h3 class="sec">Invoice Maker</h3>' +
+      '<p class="muted">Only the Owner can build or edit invoices — prices are the Owner\'s call. ' +
       "Office can record payments on sent invoices from the invoice itself.</p>" +
-      '<button class="btn ghost block" data-act="inv_cancel">Close</button></div>';
+      '<button class="btn ghost block" data-act="inv_cancel">Close</button></div></div>';
     return h;
   }
-  /* mode toggle */
-  h += '<div class="segbtns" style="margin-bottom:12px">' +
+  /* details group: mode toggle + who/what (§9.5 grouped form) */
+  h += '<div class="card"><h3 class="sec">' +
+    (editing ? "Edit invoice " + esc(editing.number) : "Invoice Maker — new invoice") + "</h3>";
+  h += '<div class="segbtns">' +
     '<button type="button" data-act="inv_mode" data-m="scratch" class="' + (d.mode === "scratch" ? "on-sched" : "") + '">From scratch</button>' +
     '<button type="button" data-act="inv_mode" data-m="job" class="' + (d.mode === "job" ? "on-sched" : "") + '">From a job</button></div>';
 
+  let totalsCard = "";
   if(d.mode === "scratch"){
     h += '<label class="f">Client *</label><select id="invf-client"><option value="">Select a client…</option>';
     DB.clients.forEach(c => { h += '<option value="' + c.id + '"' + (d.clientId === c.id ? " selected" : "") + ">" + esc(c.name) + "</option>"; });
@@ -355,14 +370,18 @@ function invMakerHTML(){
       '<option value="">Select trade…</option>' +
       '<option value="Electric"' + (d.trade === "Electric" ? " selected" : "") + ">Electric</option>" +
       '<option value="HVAC"' + (d.trade === "HVAC" ? " selected" : "") + ">HVAC</option></select>";
+    h += "</div>";
+    /* items group (§9.6) */
+    h += '<div class="card"><h3 class="sec">Line items</h3>';
     h += invProductPickerHTML();
-    h += '<label class="f">Line items</label><div id="invf-lines">';
+    h += '<div id="invf-lines">';
     (d.lines.length ? d.lines : [{ desc: "", qty: 1, price: "" }]).forEach(l => { h += invLineRowHTML(l); });
-    h += '</div><button type="button" class="btn ghost" data-act="inv_addLine" style="min-height:48px">＋ Add line</button>';
-    h += '<div class="lines-total"><span>Total</span><span class="grand" id="invf-total">' + money(invLinesTotal(d.lines)) + "</span></div>";
+    h += '</div><button type="button" class="addrow" data-act="inv_addLine">＋ Add line</button></div>';
+    totalsCard = '<div class="card"><div class="lines-total"><span>Total</span><span class="grand" id="invf-total">' + money(invLinesTotal(d.lines)) + "</span></div></div>";
   } else {
     if(DB.jobs.length === 0){
       h += '<p class="muted">There are no jobs yet — an invoice from a job needs a job. Convert an approved quote first, or build one from scratch.</p>';
+      h += "</div>";
     } else {
       h += '<label class="f">Job *</label><select id="invf-job"><option value="">Select a job…</option>' + invJobOptions(d.jobId, "") + "</select>";
       const j = d.jobId ? jobById(d.jobId) : null;
@@ -375,15 +394,18 @@ function invMakerHTML(){
         '<option value="full"' + (d.basis === "full" ? " selected" : "") + ">Full amount of the job</option>" +
         '<option value="draw"' + (d.basis === "draw" ? " selected" : "") + ">Stage draw — a % of the job</option></select>";
       h += '<div id="invf-pctwrap"' + (d.basis === "draw" ? "" : ' class="hidden"') + '><label class="f">Draw %</label>' +
-        '<input type="number" id="invf-pct" min="1" max="100" step="any" placeholder="e.g. 60" value="' + esc(d.drawPct) + '"></div>';
-      h += '<div class="lines-total"><span>Invoice amount</span><span class="grand" id="invf-amt">' + money(invJobModeAmount()) + "</span></div>";
+        '<input type="number" id="invf-pct" min="1" max="100" step="any" inputmode="decimal" placeholder="e.g. 60" value="' + esc(d.drawPct) + '"></div>';
+      h += "</div>";
+      totalsCard = '<div class="card"><div class="lines-total"><span>Invoice amount</span><span class="grand" id="invf-amt">' + money(invJobModeAmount()) + "</span></div></div>";
     }
   }
+  h += totalsCard;
 
-  h += '<label class="f">Issue date *</label><input type="date" id="invf-issue" value="' + esc(d.issueDate) + '">';
-  h += '<label class="f">Due date</label><input type="date" id="invf-due" value="' + esc(d.dueDate) + '">';
+  /* dates + notes group; the error sits below the fields (§9.5) */
+  h += '<div class="card"><div class="grid2"><div><label class="f">Issue date *</label><input type="date" id="invf-issue" value="' + esc(d.issueDate) + '"></div>' +
+    '<div><label class="f">Due date</label><input type="date" id="invf-due" value="' + esc(d.dueDate) + '"></div></div>';
   h += '<label class="f">Notes</label><textarea id="invf-notes" placeholder="Notes for the office / the client…">' + esc(d.notes) + "</textarea>";
-  h += '<div class="err" id="invf-err"' + (d.err ? ' style="display:block"' : "") + ">" + esc(d.err || "") + "</div>";
+  h += '<div class="err" id="invf-err"' + (d.err ? ' style="display:block"' : "") + ">" + esc(d.err || "") + "</div></div>";
   h += '<button class="btn block" data-act="inv_save">' + (editing ? "Save changes" : "Create draft invoice") + "</button>";
   h += '<p class="muted small" style="text-align:center">New invoices start as <b>drafts — not sent</b>. The Owner marks them sent.</p>';
   h += '<button class="btn ghost block" data-act="inv_cancel">Cancel</button></div>';
@@ -502,33 +524,30 @@ function invDetailHTML(inv){
   let h = '<button class="backbtn" data-act="inv_back">← All invoices</button>';
   if(INV.flash) h += '<div class="okmsg">' + esc(INV.flash) + "</div>";
 
-  /* header card */
-  h += '<div class="dhead"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">' +
-    '<div><div style="font-size:1.3rem;font-weight:800">' + esc(inv.number) + "</div>" +
-    '<div class="muted">' + esc(invClientName(inv)) + (c ? " · " + esc(propertyLabel(c, inv.propertyId)) : "") + "</div></div>" +
-    (inv.status === "Draft" ? '<span class="tag-draft">DRAFT — not sent</span>' : invoicePill(inv)) + "</div>";
-  h += '<div class="stats" style="margin-top:12px">' +
-    '<div class="stat"><div class="n" style="font-size:1.3rem">' + money(inv.amount) + '</div><div class="l">Amount</div></div>' +
-    '<div class="stat"><div class="n" style="font-size:1.3rem">' + money(paidSum) + '</div><div class="l">Paid so far</div></div>' +
-    '<div class="stat' + (bal > 0 && inv.status !== "Draft" ? " alert" : "") + '"><div class="n" style="font-size:1.3rem">' + money(bal) + '</div><div class="l">Balance due</div></div>' +
+  /* header (§9.4): pill/tag + number footnote, hero amount, sublines;
+     money group = Paid so far / Balance due (amount is the hero) */
+  h += '<div class="dhead">' +
+    '<div class="dh-top"><span class="dh-num">' + esc(inv.number) + '</span>' +
+    (inv.status === "Draft" ? '<span class="tag-draft">DRAFT — not sent</span>' : invoicePill(inv)) + "</div>" +
+    '<div class="dh-hero">' + money(inv.amount) + "</div>" +
+    '<div class="dh-sub">' + esc(invClientName(inv)) + (c ? " · " + esc(propertyLabel(c, inv.propertyId)) : "") + "</div>" +
+    '<div class="dh-sub">Issued ' + fmtDate(inv.createdAt) +
+      (inv.sentAt ? " · Sent " + fmtDate(inv.sentAt) : "") +
+      (inv.dueDate ? " · Due " + fmtDate(inv.dueDate) : "") + "</div>";
+  h += '<div class="stats">' +
+    '<div class="stat"><div class="n">' + money(paidSum) + '</div><div class="l">Paid so far</div></div>' +
+    '<div class="stat' + (bal > 0 && inv.status !== "Draft" ? " alert" : "") + '"><div class="n">' + money(bal) + '</div><div class="l">Balance due</div></div>' +
     "</div>";
 
-  /* actions */
-  h += '<div class="btnrow" style="margin-top:6px">';
+  /* actions — Delete lives in the danger zone at the bottom (§9.4) */
+  h += '<div class="dh-actions">';
   if(inv.status === "Draft" && owner) h += '<button class="btn" data-act="inv_send" data-id="' + inv.id + '">Mark as Sent</button>';
   if(inv.status === "Draft" && owner) h += '<button class="btn ghost" data-act="inv_edit" data-id="' + inv.id + '">Edit</button>';
   if(owner) h += '<button class="btn ghost" data-act="inv_dup" data-id="' + inv.id + '">Duplicate</button>';
   h += '<button class="btn ghost" data-act="inv_doc" data-id="' + inv.id + '">View Document</button>';
-  if(inv.status === "Draft" && INV.confirmDel !== inv.id) h += '<button class="btn ghost" data-act="inv_del" data-id="' + inv.id + '">Delete</button>';
   h += "</div>";
   if(inv.status === "Draft" && !owner)
     h += '<p class="muted small">Draft — only the Owner can edit or send an invoice with prices.</p>';
-  if(INV.confirmDel === inv.id){
-    h += '<div class="card" style="border-color:var(--red)"><b>Delete ' + esc(inv.number) + "?</b>" +
-      '<p class="muted small">This draft will be removed for good. Sent and paid invoices cannot be deleted.</p>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="inv_delGo" data-id="' + inv.id + '" style="background:var(--red)">Delete invoice</button>' +
-      '<button class="btn ghost" data-act="inv_delCancel">Keep it</button></div></div>';
-  }
   h += "</div>"; /* /header card */
 
   /* two-column body */
@@ -536,12 +555,14 @@ function invDetailHTML(inv){
   /* lines / basis */
   h += '<div class="card"><h3 class="sec" style="margin-top:0">Details</h3>';
   if(inv.lines && inv.lines.length){
-    h += '<table class="lines"><thead><tr><th>Description</th><th>Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead><tbody>';
+    /* grouped item rows (§9.6): title, "qty × price" detail, amount */
+    h += '<div class="items">';
     inv.lines.forEach(l => {
-      h += "<tr><td>" + esc(l.desc) + "</td><td>" + esc(l.qty) + '</td><td style="text-align:right">' + money(l.price) +
-           '</td><td style="text-align:right">' + money((Number(l.qty) || 0) * (Number(l.price) || 0)) + "</td></tr>";
+      h += '<div class="lrow"><span class="grow"><span class="name">' + esc(l.desc) + "</span>" +
+           '<span class="meta">' + esc(l.qty) + " × " + money(l.price) + "</span></span>" +
+           '<span class="amt">' + money((Number(l.qty) || 0) * (Number(l.price) || 0)) + "</span></div>";
     });
-    h += '</tbody></table><div class="lines-total"><span>Total</span><span class="grand">' + money(invLinesTotal(inv.lines)) + "</span></div>";
+    h += '</div><div class="lines-total"><span>Total</span><span class="grand">' + money(invLinesTotal(inv.lines)) + "</span></div>";
   } else if(j){
     h += '<div class="kv"><span class="k">Job</span><span class="v">' + esc(invJobShort(inv)) + "</span></div>" +
          '<div class="kv"><span class="k">Billing</span><span class="v">' +
@@ -598,6 +619,17 @@ function invDetailHTML(inv){
     (j ? '<button class="btn ghost block" data-act="inv_openJob" data-id="' + inv.id + '" style="margin-top:10px">Open job →</button>' : "") +
     "</div>";
   h += "</div></div>"; /* /side + /detail-grid */
+
+  /* destructive group — last, alone (§9.4); two-step confirm stays */
+  if(inv.status === "Draft" && INV.confirmDel !== inv.id){
+    h += '<div class="dangerzone"><button class="btn danger block" data-act="inv_del" data-id="' + inv.id + '">Delete invoice</button></div>';
+  }
+  if(INV.confirmDel === inv.id){
+    h += '<div class="dangerzone"><b>Delete ' + esc(inv.number) + "?</b>" +
+      '<p class="muted small">This draft will be removed for good. Sent and paid invoices cannot be deleted.</p>' +
+      '<div class="btnrow"><button class="btn danger" data-act="inv_delGo" data-id="' + inv.id + '">Delete invoice</button>' +
+      '<button class="btn ghost" data-act="inv_delCancel">Keep it</button></div></div>';
+  }
   return h;
 }
 
@@ -630,9 +662,10 @@ function invDocumentHTML(inv){
     if(addr === "No property selected") addr = "";
   }
   let h = '<button class="backbtn" data-act="inv_docBack">← Back to invoice</button>' +
-    '<div class="btnrow" style="margin-bottom:12px"><button class="btn" data-act="inv_print">🖨 Print invoice</button></div>';
+    '<div class="btnrow" style="margin-bottom:12px"><button class="btn" data-act="inv_print">Print invoice</button></div>';
+  /* §9.8: DRAFT is the quiet .tag-draft in the header — no watermark.
+     Brand colour appears only in the wordmark + one tint rule. */
   h += '<div class="doc" id="inv-doc">';
-  if(inv.status === "Draft") h += '<div class="wm">DRAFT</div>';
   h += '<div class="doc-head"><div>' +
     '<div class="doc-co">SHARMA ELECTRIC &amp; <span class="gold">HVAC</span></div>' +
     '<div class="muted">SHARMA360</div>' +
@@ -641,13 +674,14 @@ function invDocumentHTML(inv){
     '<div><div class="doc-title">Invoice</div>' +
     '<div class="doc-num">' + esc(inv.number) + "</div>" +
     (inv.status === "Draft" ? '<span class="tag-draft">DRAFT — not sent</span>' : invoicePill(inv)) + "</div></div>";
+  h += '<div class="doc-rule"></div>';
 
   h += '<div class="doc-parties">' +
     '<div class="dp"><div class="dp-h">Bill to</div>' +
     '<div style="font-weight:700;font-size:1.05rem">' + esc(invClientName(inv)) + "</div>" +
     (addr ? '<div class="muted">' + esc(addr) + "</div>" : "") +
     (c && c.email ? '<div class="muted small">' + esc(c.email) + "</div>" : "") + "</div>" +
-    '<div class="dp">' +
+    '<div class="dp"><div class="dp-h">Details</div>' +
     '<div class="kv"><span class="k">Issued</span><span class="v">' + fmtDate(inv.createdAt) + "</span></div>" +
     (inv.dueDate ? '<div class="kv"><span class="k">Due</span><span class="v">' + fmtDate(inv.dueDate) + "</span></div>" : "") +
     '<div class="kv"><span class="k">Trade</span><span class="v">' + esc(inv.trade || "—") + "</span></div>" +
@@ -655,9 +689,9 @@ function invDocumentHTML(inv){
     '<div class="kv"><span class="k">Status</span><span class="v">' + esc(st) + "</span></div>" +
     "</div></div>";
 
-  h += '<table><thead><tr><th>Description</th><th>Qty</th><th class="r">Price</th><th class="r">Total</th></tr></thead><tbody>';
+  h += '<table><thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr></thead><tbody>';
   invDocRows(inv).forEach(l => {
-    h += "<tr><td>" + esc(l.desc) + "</td><td>" + esc(l.qty) + '</td><td class="r">' + money(l.price) +
+    h += "<tr><td>" + esc(l.desc) + '</td><td class="r">' + esc(l.qty) + '</td><td class="r">' + money(l.price) +
          '</td><td class="r">' + money((Number(l.qty) || 0) * (Number(l.price) || 0)) + "</td></tr>";
   });
   h += "</tbody></table>";

@@ -1,10 +1,20 @@
 /* ============================================================
-   SHARMA360 CRM v3 — Jobs module (view-jobs.js)
+   SHARMA360 CRM v4 — Jobs module (view-jobs.js)
    Registers VIEWS.jobs + ACTIONS.job_*.
-   Jobber-style: searchable/filterable job list, "+ New Job" create
-   form (from scratch, not only from quotes), job detail with the
-   5-stage Sharma tracker (TUG → Underground → Rough-in → Trim →
-   Final), amounts, and a hand-off into the invoice maker.
+   Apple-design restyle of the v3 module: grouped inset lists
+   (§9.3 rows: title / client · property · date subtitle /
+   amount-over-pill trailing column, no chevron with pill),
+   §9.4 detail header + grouped stat card, stage tracker as a
+   grouped list with in-row segmented control + date pill,
+   §9.5 grouped form rows, §5.9 empty states.
+   All data logic, action names and cross-module conventions
+   (CRM_OPEN, CRM_PRESELECT_INVOICE_JOB) are unchanged from v3.
+
+   New class hooks introduced (for style.css): .grouplabel,
+   .trail, .dtitle, .frow, .fctl, .fval, .cur, input.money,
+   input.datepill. Existing hooks reused: .listcard, .rowitem,
+   .stats/.stat/.n/.l, .kv/.k/.v, .stage/.top/.nm/.segbtns,
+   .chips, .empty/.empty-ic, .pill (core jobPill/invoicePill).
 
    Conventions used (see V3-CONTRACT.md):
    - Clicks: data-act="job_*" (core delegation). Inputs/selects use
@@ -50,19 +60,10 @@ function stagesDone(j){
     return j.stages && j.stages[st.key] && j.stages[st.key].status === "done";
   }).length;
 }
-function stagePill(st){
-  if (st === "done") return '<span class="pill green">Done</span>';
-  if (st === "sched") return '<span class="pill gold">Scheduled</span>';
-  return '<span class="pill grey">Not started</span>';
-}
 function jobTitle(j){
   if (j.title) return j.title;
   var c = clientById(j.clientId);
   return (c ? c.name : "Unknown client") + " · " + j.trade;
-}
-function initials(name){
-  var parts = String(name || "?").trim().split(/\s+/);
-  return ((parts[0] || "?").charAt(0) + (parts.length > 1 ? parts[parts.length - 1].charAt(0) : "")).toUpperCase();
 }
 function sortedClients(){
   return DB.clients.slice().sort(function(a, b){ return a.name.localeCompare(b.name); });
@@ -97,6 +98,25 @@ function filteredJobs(){
   return list;
 }
 
+function jobRowHTML(j){
+  var c = clientById(j.clientId);
+  var sub = [];
+  if (c) sub.push(esc(c.name));
+  var pl = propertyLabel(c, j.propertyId);
+  if (pl && pl !== "No property selected") sub.push(esc(pl));
+  if (j.jobberNumber) sub.push("Jobber #" + esc(j.jobberNumber));
+  var meta = [];
+  if (j.createdAt) meta.push("Started " + fmtDate(j.createdAt));
+  meta.push(stagesDone(j) + " of 5 stages done");
+  meta.push("Invoiced " + money(jobInvoiced(j)));
+  return '<button class="rowitem" data-act="job_open" data-id="' + j.id + '">' +
+           '<span class="grow"><span class="name">' + esc(jobTitle(j)) + '</span>' +
+           (sub.length ? '<div class="meta">' + sub.join(" · ") + '</div>' : '') +
+           '<div class="meta">' + meta.join(" · ") + '</div></span>' +
+           '<span class="trail"><span class="amt">' + money(jobAmount(j)) + '</span>' +
+           jobPill(j) + '</span></button>';
+}
+
 function listHTML(){
   var list = filteredJobs();
   var h = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">' +
@@ -111,44 +131,40 @@ function listHTML(){
              return '<button data-act="job_filter" data-val="' + f + '"' + (S.filter === f ? ' class="on"' : '') + '>' + f + '</button>';
            }).join("") +
          '</div>' +
-         '<label class="f">Sort</label>' +
-         '<select id="job-sort" onchange="ACTIONS.job_sort(this.value)">' +
+         '<div class="frow"><label class="f" for="job-sort">Sort</label>' +
+         '<span class="fctl"><select id="job-sort" onchange="ACTIONS.job_sort(this.value)">' +
            '<option value="new"' + (S.sort === "new" ? " selected" : "") + '>Newest first</option>' +
            '<option value="old"' + (S.sort === "old" ? " selected" : "") + '>Oldest first</option>' +
            '<option value="amt-desc"' + (S.sort === "amt-desc" ? " selected" : "") + '>Amount: high to low</option>' +
            '<option value="amt-asc"' + (S.sort === "amt-asc" ? " selected" : "") + '>Amount: low to high</option>' +
            '<option value="client"' + (S.sort === "client" ? " selected" : "") + '>Client A–Z</option>' +
-         '</select>' +
+         '</select></span></div>' +
          '<p class="muted small" style="margin:10px 0 0">' + list.length + ' of ' + DB.jobs.length + ' jobs</p>' +
        '</div>';
 
   if (DB.jobs.length === 0) {
-    h += '<div class="empty">No jobs yet. Jobs are created by converting an approved quote — or tap ＋ New Job to start one from scratch.</div>';
+    h += '<div class="empty"><div class="empty-ic">▤</div><h3>No Jobs Yet</h3>' +
+         '<p class="muted">Jobs are created by converting an approved quote — or start one from scratch.</p>' +
+         '<button class="btn gold" data-act="job_new">＋ New Job</button></div>';
     return h;
   }
   if (list.length === 0) {
-    h += '<div class="empty">No jobs match this search or filter.</div>';
+    h += '<div class="empty"><div class="empty-ic">⌕</div><h3>No Matching Jobs</h3>' +
+         '<p class="muted">No jobs match this search or filter.</p></div>';
     return h;
   }
 
-  list.forEach(function(j){
-    var c = clientById(j.clientId);
-    var amt = jobAmount(j), invd = jobInvoiced(j);
-    var meta = [];
-    if (c) meta.push(esc(c.name));
-    if (j.jobberNumber) meta.push("Jobber #" + esc(j.jobberNumber));
-    var pl = propertyLabel(c, j.propertyId);
-    if (pl && pl !== "No property selected") meta.push(esc(pl));
-    meta.push(stagesDone(j) + " of 5 stages done");
-    if (j.createdAt) meta.push("Started " + fmtDate(j.createdAt));
-    h += '<button class="rowitem" data-act="job_open" data-id="' + j.id + '">' +
-           '<span class="avatar">' + esc(initials(c ? c.name : "?")) + '</span>' +
-           '<span class="grow"><span class="name">' + esc(jobTitle(j)) + '</span>' +
-           '<div class="meta">' + meta.join(" · ") + '</div></span>' +
-           '<span style="text-align:right"><span class="amt">' + money(amt) + '</span>' +
-           '<div class="meta">invoiced ' + money(invd) + '</div></span>' +
-           jobPill(j) + '<span class="chev">›</span></button>';
-  });
+  if (S.filter === "All") {
+    /* group by status with footnote group headers (§9.3 grouping) */
+    ["Late", "Active", "Completed"].forEach(function(st){
+      var g = list.filter(function(j){ return jobDisplayStatus(j) === st; });
+      if (!g.length) return;
+      h += '<div class="grouplabel">' + st + ' · ' + g.length + '</div>' +
+           '<div class="listcard">' + g.map(jobRowHTML).join("") + '</div>';
+    });
+  } else {
+    h += '<div class="listcard">' + list.map(jobRowHTML).join("") + '</div>';
+  }
   return h;
 }
 
@@ -159,58 +175,64 @@ function detailHTML(j){
   var amt = jobAmount(j), invd = jobInvoiced(j), left = Math.max(0, amt - invd);
   var h = '<button class="backbtn" data-act="job_back">← All jobs</button>';
 
-  /* header card */
-  h += '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">' +
-         '<div><div style="font-size:1.25rem;font-weight:800">' + esc(jobTitle(j)) + '</div>' +
+  /* header group (§9.4): status pill + number, title, subline, amounts group */
+  h += '<div class="card">' +
+         '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">' +
+           jobPill(j) +
+           (j.jobberNumber ? '<span class="muted small">Jobber #' + esc(j.jobberNumber) + '</span>' : '') +
+         '</div>' +
+         '<div class="dtitle">' + esc(jobTitle(j)) + '</div>' +
          '<div class="muted">' + esc(c ? c.name : "Unknown client") +
-           (propertyLabel(c, j.propertyId) !== "No property selected" ? ' · ' + esc(propertyLabel(c, j.propertyId)) : '') + '</div></div>' +
-         jobPill(j) + '</div>' +
-       '<div class="stats" style="margin-top:14px">' +
-         '<div class="stat"><div class="n" style="font-size:1.3rem">' + money(amt) + '</div><div class="l">Job amount</div></div>' +
-         '<div class="stat"><div class="n" style="font-size:1.3rem">' + money(invd) + '</div><div class="l">Invoiced so far</div></div>' +
-         '<div class="stat"><div class="n" style="font-size:1.3rem">' + money(left) + '</div><div class="l">Left to invoice</div></div>' +
-         '<div class="stat"><div class="n" style="font-size:1.3rem">' + stagesDone(j) + ' / 5</div><div class="l">Stages done</div></div>' +
-       '</div>' +
-       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">' +
-         '<button class="btn gold" data-act="job_invoice" data-id="' + j.id + '">＋ Create invoice from this job</button>' +
-         '<button class="btn" data-act="job_edit" data-id="' + j.id + '">Edit job</button>' +
-         '<button class="btn ghost del" data-act="job_delete" data-id="' + j.id + '">Delete</button>' +
-       '</div></div>';
+           (propertyLabel(c, j.propertyId) !== "No property selected" ? ' · ' + esc(propertyLabel(c, j.propertyId)) : '') + '</div>' +
+         '<div class="stats">' +
+           '<div class="stat"><div class="n">' + money(amt) + '</div><div class="l">Job amount</div></div>' +
+           '<div class="stat"><div class="n">' + money(invd) + '</div><div class="l">Invoiced so far</div></div>' +
+           '<div class="stat"><div class="n">' + money(left) + '</div><div class="l">Left to invoice</div></div>' +
+         '</div>' +
+         '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+           '<button class="btn gold" data-act="job_invoice" data-id="' + j.id + '">＋ Create invoice from this job</button>' +
+           '<button class="btn" data-act="job_edit" data-id="' + j.id + '">Edit job</button>' +
+         '</div>' +
+       '</div>';
 
   h += '<div class="grid2" style="align-items:start"><div>';
 
-  /* stage tracker */
-  h += '<div class="card"><h3 class="sec" style="margin-top:0">Stage tracker — ' + esc(j.trade) + '</h3>';
+  /* stage tracker — grouped list, one row per stage (§9.4) */
+  h += '<div class="grouplabel">Stage tracker — ' + esc(j.trade) + '</div>' +
+       '<div class="card">';
   STAGES.forEach(function(s){
     var cur = (j.stages && j.stages[s.key]) || { status: "not", date: "" };
-    h += '<div class="stage"><div class="top"><span class="nm">' + s.label + '</span>' + stagePill(cur.status) + '</div>' +
+    h += '<div class="stage"><div class="top"><span class="nm">' + s.label + '</span>' +
+           '<input type="date" class="datepill" data-id="' + j.id + '" data-stage="' + s.key + '" value="' + esc(cur.date || "") + '" aria-label="' + s.label + ' date" onchange="ACTIONS.job_stage_date(this)">' +
+           '</div>' +
            '<div class="segbtns">' +
              '<button data-act="job_stage" data-id="' + j.id + '" data-stage="' + s.key + '" data-val="not" class="' + (cur.status === "not" ? "on-not" : "") + '">Not started</button>' +
              '<button data-act="job_stage" data-id="' + j.id + '" data-stage="' + s.key + '" data-val="sched" class="' + (cur.status === "sched" ? "on-sched" : "") + '">Scheduled</button>' +
              '<button data-act="job_stage" data-id="' + j.id + '" data-stage="' + s.key + '" data-val="done" class="' + (cur.status === "done" ? "on-done" : "") + '">Done</button>' +
            '</div>' +
-           '<input type="date" data-id="' + j.id + '" data-stage="' + s.key + '" value="' + esc(cur.date || "") + '" aria-label="' + s.label + ' date" onchange="ACTIONS.job_stage_date(this)">' +
          '</div>';
   });
   h += '<p class="muted small">Marking Final “Done” completes the job.</p></div>';
 
   /* invoices for this job */
   var invs = DB.invoices.filter(function(i){ return i.jobId === j.id; });
-  h += '<div class="card"><h3 class="sec" style="margin-top:0">Invoices for this job (' + invs.length + ')</h3>';
+  h += '<div class="grouplabel">Invoices for this job · ' + invs.length + '</div><div class="card">';
   if (!invs.length) {
-    h += '<div class="empty">No invoices yet for this job.</div>';
+    h += '<div class="empty"><div class="empty-ic">▤</div><h3>No Invoices Yet</h3>' +
+         '<p class="muted">No invoices yet for this job.</p>' +
+         '<button class="btn" data-act="job_invoice" data-id="' + j.id + '">＋ Create invoice</button></div>';
   } else {
     invs.forEach(function(inv){
       h += '<button class="rowitem" data-act="job_open_invoice" data-id="' + inv.id + '">' +
              '<span class="grow"><span class="name">' + inv.number + '</span>' +
              '<div class="meta">' + fmtDate(inv.createdAt) + ' · balance ' + money(invoiceBalance(inv)) + '</div></span>' +
-             '<span class="amt">' + money(inv.amount) + '</span>' + invoicePill(inv) + '<span class="chev">›</span></button>';
+             '<span class="trail"><span class="amt">' + money(inv.amount) + '</span>' + invoicePill(inv) + '</span></button>';
     });
   }
   h += '</div></div>';
 
-  /* side: job info card */
-  h += '<div><div class="card"><h3 class="sec" style="margin-top:0">Job info</h3>' +
+  /* side: job info group */
+  h += '<div><div class="grouplabel">Job info</div><div class="card">' +
          '<div class="kv"><span class="k">Client</span><span class="v">' + esc(c ? c.name : "—") + '</span></div>' +
          '<div class="kv"><span class="k">Property</span><span class="v">' + esc(propertyLabel(c, j.propertyId)) + '</span></div>' +
          '<div class="kv"><span class="k">Trade</span><span class="v">' + esc(j.trade) + '</span></div>' +
@@ -220,10 +242,10 @@ function detailHTML(j){
          '<div class="kv"><span class="k">Status</span><span class="v">' + jobDisplayStatus(j) + '</span></div>' +
        '</div>';
 
-  /* side: client money card */
+  /* side: client money group */
   if (c) {
     var cm = clientMoney(c.id);
-    h += '<div class="card"><h3 class="sec" style="margin-top:0">' + esc(c.name) + ' — money</h3>' +
+    h += '<div class="grouplabel">' + esc(c.name) + ' — money</div><div class="card">' +
            '<div class="kv"><span class="k">Quoted</span><span class="v">' + money(cm.quoted) + '</span></div>' +
            '<div class="kv"><span class="k">Invoiced</span><span class="v">' + money(cm.invoiced) + '</span></div>' +
            '<div class="kv"><span class="k">Paid</span><span class="v">' + money(cm.paid) + '</span></div>' +
@@ -231,6 +253,9 @@ function detailHTML(j){
          '</div>';
   }
   h += '</div></div>';
+
+  /* destructive — last, alone (§9.4) */
+  h += '<div class="card"><button class="btn ghost del block" data-act="job_delete" data-id="' + j.id + '">Delete job</button></div>';
   return h;
 }
 
@@ -242,46 +267,48 @@ function formHTML(){
   var h = '<button class="backbtn" data-act="job_form_cancel">← Cancel</button>' +
           '<h2 class="view">' + (editing ? "Edit job" : "New Job") + '</h2>' +
           '<div class="card">' +
-          '<label class="f">Client *</label>' +
-          '<select id="jf-client" onchange="ACTIONS.job_form_client(this)">' +
+          '<div class="frow"><label class="f" for="jf-client">Client *</label>' +
+          '<span class="fctl"><select id="jf-client" onchange="ACTIONS.job_form_client(this)">' +
             '<option value="">— Choose a client —</option>' +
             sortedClients().map(function(cl){
               return '<option value="' + cl.id + '"' + (JF.clientId === cl.id ? " selected" : "") + '>' + esc(cl.name) + '</option>';
             }).join("") +
-          '</select>' +
-          '<label class="f">Property</label>' +
-          '<select id="jf-property">' +
+          '</select></span></div>' +
+          '<div class="frow"><label class="f" for="jf-property">Property</label>' +
+          '<span class="fctl"><select id="jf-property">' +
             '<option value="">No property selected</option>' +
             props.map(function(p){
               return '<option value="' + p.id + '"' + (JF.propertyId === p.id ? " selected" : "") + '>' + esc(propertyLabel(c, p.id)) + '</option>';
             }).join("") +
-          '</select>' +
-          '<label class="f">Trade *</label>' +
-          '<select id="jf-trade">' +
+          '</select></span></div>' +
+          '<div class="frow"><label class="f" for="jf-trade">Trade *</label>' +
+          '<span class="fctl"><select id="jf-trade">' +
             '<option value="Electric"' + (JF.trade === "Electric" ? " selected" : "") + '>Electric</option>' +
             '<option value="HVAC"' + (JF.trade === "HVAC" ? " selected" : "") + '>HVAC</option>' +
-          '</select>' +
-          '<label class="f">Job title</label>' +
-          '<input type="text" id="jf-title" placeholder="e.g. Rough-in — Lot 12, Bella Collina" value="' + esc(JF.title || "") + '">';
+          '</select></span></div>' +
+          '<div class="frow"><label class="f" for="jf-title">Job title</label>' +
+          '<span class="fctl"><input type="text" id="jf-title" placeholder="e.g. Rough-in — Lot 12, Bella Collina" value="' + esc(JF.title || "") + '"></span></div>';
+  var foot = "";
   if (JF.quoteId) {
     var qj = JF.id ? jobById(JF.id) : null;
-    h += '<label class="f">Job amount</label>' +
-         '<div class="kv"><span class="v">' + money(qj ? jobAmount(qj) : 0) + '</span></div>' +
-         '<p class="muted small">This job\'s amount comes from its quote — edit the quote to change it.</p>';
+    h += '<div class="frow"><span class="f">Job amount</span>' +
+         '<span class="fval">' + money(qj ? jobAmount(qj) : 0) + '</span></div>';
+    foot = '<p class="muted small">This job\'s amount comes from its quote — edit the quote to change it.</p>';
   } else if (isOwner()) {
-    h += '<label class="f">Job amount ($)</label>' +
-         '<input type="number" id="jf-amount" min="0" step="0.01" inputmode="decimal" value="' + (JF.amount != null && JF.amount !== "" ? esc(JF.amount) : "") + '">';
+    h += '<div class="frow"><label class="f" for="jf-amount">Job amount</label>' +
+         '<span class="fctl"><span class="cur">$</span>' +
+         '<input type="number" class="money" id="jf-amount" min="0" step="0.01" inputmode="decimal" value="' + (JF.amount != null && JF.amount !== "" ? esc(JF.amount) : "") + '"></span></div>';
   } else {
-    h += '<label class="f">Job amount</label>' +
-         '<div class="kv"><span class="v">' + money(JF.amount || 0) + '</span></div>' +
-         '<p class="muted small">Only the Owner can set or change amounts. The Office can create the job — the Owner adds the amount.</p>';
+    h += '<div class="frow"><span class="f">Job amount</span>' +
+         '<span class="fval">' + money(JF.amount || 0) + '</span></div>';
+    foot = '<p class="muted small">Only the Owner can set or change amounts. The Office can create the job — the Owner adds the amount.</p>';
   }
-  h += '<label class="f">Start date</label>' +
-       '<input type="date" id="jf-date" value="' + esc(JF.date || todayStr()) + '">' +
+  h += '<div class="frow"><label class="f" for="jf-date">Start date</label>' +
+       '<span class="fctl"><input type="date" class="datepill" id="jf-date" value="' + esc(JF.date || todayStr()) + '"></span></div>' +
+       '</div>' + foot +
        '<div class="err" id="jf-err"></div>' +
        '<button class="btn gold block" data-act="job_save">' + (editing ? "Save changes" : "Create job") + '</button>' +
-       '<button class="btn ghost block" data-act="job_form_cancel">Cancel</button>' +
-       '</div>';
+       '<button class="btn ghost block" data-act="job_form_cancel">Cancel</button>';
   return h;
 }
 function captureForm(){

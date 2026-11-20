@@ -1,7 +1,25 @@
 /* ============================================================
-   SHARMA360 CRM v3 — More module (view-more.js)
+   SHARMA360 CRM v4 — More module (view-more.js)
    Registers VIEWS.more + ACTIONS.more_* / req_* / prod_* / set_*.
    Sections: hub → Requests, Products & Submittals, Settings.
+
+   Apple-design restyle of the v3 module: Settings-style hub with
+   29px icon tiles (§9.3, settings-like lists only), grouped inset
+   lists with footnote group headers, §9.5 grouped form rows,
+   §9.7 quiet status pills, §5.9 empty states, and a true iOS
+   Settings page. Appearance is Light | Dark ONLY (Sanjay's
+   standing rule): default Light, never follows the OS, choice
+   remembered on device, applied via the shell's setAppearance()
+   when present (guarded).
+   All data logic and action names are unchanged from v3.
+
+   New class hooks introduced (for style.css): .grouplabel
+   (shared with view-jobs), .tile (hub icon tile, inline SVG
+   stroke icons per spec §7.2), .rval (quiet secondary trailing
+   value), .rowactions (action row inside a group), .frow /
+   .fctl / .fval / .fstack (shared form-row hooks, see
+   view-jobs). Removed in this module: .cathead (→ .grouplabel),
+   .badge for sources/photos (→ secondary text / .rval).
 
    Conventions used (see V3-CONTRACT.md):
    - Clicks: data-act (core delegation). Inputs/selects/file use
@@ -25,6 +43,22 @@ var M = { section: "hub" };            /* hub | requests | products | settings *
 var PQ = { q: "", trade: "All" };      /* product search state */
 var REQ_SOURCES = ["Bid Boards", "Lead Finder", "Call", "Picker", "Referral"];
 
+/* ---------------- appearance (Light | Dark only) ---------------- */
+function appearanceNow(){
+  try {
+    if (typeof document !== "undefined" && document.documentElement) {
+      var t = document.documentElement.getAttribute("data-theme");
+      if (t === "dark" || t === "light") return t;
+    }
+  } catch (e) { /* no DOM yet */ }
+  try {
+    var saved = localStorage.getItem("sharma-crm-appearance");
+    if (saved === "dark" || saved === "light") return saved;
+  } catch (e) { /* storage unavailable */ }
+  return "light"; /* Sanjay's rule: default Light, never the OS setting */
+}
+var APP_MODE = appearanceNow();
+
 /* ---------------- small local helpers ---------------- */
 function refresh(){ if (typeof render === "function") render(); }
 function navTo(tab){
@@ -33,7 +67,7 @@ function navTo(tab){
   if (typeof go === "function") { go(tab); return; }
   refresh();
 }
-function exitForm(){ 
+function exitForm(){
   if (typeof closeForm === "function") { closeForm(); refresh(); return; }
   navTo("more");
 }
@@ -45,23 +79,30 @@ function refreshSearch(inputId){
 function requestPill(st){
   if (st === "Converted") return '<span class="pill green">Converted</span>';
   if (st === "Archived") return '<span class="pill grey">Archived</span>';
-  return '<span class="pill gold">New</span>';
+  return '<span class="pill blue">New</span>';
 }
 function cap(s){ s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1); }
+function tileIcon(paths){
+  return '<span class="tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg></span>';
+}
 
 /* ---------------- hub ---------------- */
 function hubHTML(){
   var newReqs = DB.requests.filter(function(r){ return r.status === "New"; }).length;
-  var h = '<h2 class="view">More</h2>';
-  h += '<button class="rowitem" data-act="more_go" data-val="requests"><span class="grow">' +
-         '<span class="name">Requests</span><div class="meta">New work in — convert to a client + draft quote</div></span>' +
-         (newReqs ? '<span class="pill gold">' + newReqs + ' new</span>' : '') + '<span class="chev">›</span></button>';
-  h += '<button class="rowitem" data-act="more_go" data-val="products"><span class="grow">' +
-         '<span class="name">Products &amp; Submittals</span><div class="meta">Submittal library — ' + PRODUCTS.length + ' products</div></span>' +
+  var h = '<h2 class="view">More</h2><div class="listcard">';
+  h += '<button class="rowitem" data-act="more_go" data-val="requests">' +
+         tileIcon('<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 13.5h4.2l1.6 2.5h5.4l1.6-2.5h4.2"/>') +
+         '<span class="grow"><span class="name">Requests</span></span>' +
+         (newReqs ? '<span class="rval">' + newReqs + ' new</span>' : '') + '<span class="chev">›</span></button>';
+  h += '<button class="rowitem" data-act="more_go" data-val="products">' +
+         tileIcon('<path d="M12 3.2 20 7.6v8.8l-8 4.4-8-4.4V7.6z"/><path d="M4.3 7.8 12 12l7.7-4.2"/><path d="M12 12v8.6"/>') +
+         '<span class="grow"><span class="name">Products &amp; Submittals</span></span>' +
+         '<span class="rval">' + PRODUCTS.length + '</span><span class="chev">›</span></button>';
+  h += '<button class="rowitem" data-act="more_go" data-val="settings">' +
+         tileIcon('<path d="M4.5 7.5h15M4.5 12h15M4.5 16.5h15"/><circle cx="9" cy="7.5" r="2.1"/><circle cx="15.5" cy="12" r="2.1"/><circle cx="8" cy="16.5" r="2.1"/>') +
+         '<span class="grow"><span class="name">Settings</span></span>' +
          '<span class="chev">›</span></button>';
-  h += '<button class="rowitem" data-act="more_go" data-val="settings"><span class="grow">' +
-         '<span class="name">Settings</span><div class="meta">Role, lock, Jobber import, backup export / import</div></span>' +
-         '<span class="chev">›</span></button>';
+  h += '</div>';
   return h;
 }
 
@@ -70,9 +111,11 @@ function requestsHTML(){
   var h = '<button class="backbtn" data-act="more_go" data-val="hub">← More</button>' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">' +
           '<h2 class="view" style="margin:0">Requests</h2>' +
-          '<button class="btn gold" data-act="req_new">＋ New Request</button></div><div style="height:10px"></div>';
+          '<button class="btn gold" data-act="req_new">＋ New Request</button></div>';
   if (!DB.requests.length) {
-    h += '<div class="empty">No requests yet. New work from Bid Boards, the Lead Finder, phone calls and the picker lands here — then converts to a client + draft quote in one tap.</div>';
+    h += '<div class="empty"><div class="empty-ic">▥</div><h3>No Requests Yet</h3>' +
+         '<p class="muted">New work from Bid Boards, the Lead Finder, phone calls and the picker lands here — then converts to a client + draft quote in one tap.</p>' +
+         '<button class="btn gold" data-act="req_new">＋ New Request</button></div>';
     return h;
   }
   var order = { "New": 0, "Converted": 1, "Archived": 2 };
@@ -80,54 +123,73 @@ function requestsHTML(){
     return ((order[a.status] || 0) - (order[b.status] || 0)) ||
            String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
   });
-  list.forEach(function(r){
-    var desc = r.desc || r.description || "";
-    h += '<div class="rowitem"><span class="grow">' +
-           '<span class="name">' + esc(r.name) + '</span>' +
-           '<div class="meta"><span class="badge">' + esc(r.source || "—") + '</span> ' +
-             fmtDate(r.createdAt) +
-             (r.contact ? ' · ' + esc(r.contact) : '') +
-             (desc ? '<br>' + esc(desc) : '') +
-           '</div></span>' +
-           requestPill(r.status) + '</div>';
-    if (r.status === "New") {
-      h += '<div style="display:flex;gap:8px;margin:-4px 0 12px">' +
-             '<button class="btn" data-act="req_convert" data-id="' + r.id + '">Convert to client + draft quote</button>' +
-             '<button class="btn ghost" data-act="req_archive" data-id="' + r.id + '">Archive</button>' +
-           '</div>';
-    }
+  ["New", "Converted", "Archived"].forEach(function(st){
+    var g = list.filter(function(r){ return r.status === st; });
+    if (!g.length) return;
+    h += '<div class="grouplabel">' + st + ' · ' + g.length + '</div><div class="listcard">';
+    g.forEach(function(r){
+      var desc = r.desc || r.description || "";
+      var meta = [];
+      meta.push(esc(r.source || "—"));
+      meta.push(fmtDate(r.createdAt));
+      if (r.contact) meta.push(esc(r.contact));
+      h += '<div class="rowitem"><span class="grow">' +
+             '<span class="name">' + esc(r.name) + '</span>' +
+             '<div class="meta">' + meta.join(" · ") + '</div>' +
+             (desc ? '<div class="meta">' + esc(desc) + '</div>' : '') +
+             '</span>' +
+             requestPill(r.status) + '</div>';
+      if (r.status === "New") {
+        h += '<div class="rowactions">' +
+               '<button class="btn" data-act="req_convert" data-id="' + r.id + '">Convert to client + draft quote</button>' +
+               '<button class="btn ghost" data-act="req_archive" data-id="' + r.id + '">Archive</button>' +
+             '</div>';
+      }
+    });
+    h += '</div>';
   });
   return h;
 }
 function requestFormHTML(){
   return '<button class="backbtn" data-act="req_form_cancel">← Cancel</button>' +
     '<h2 class="view">New Request</h2><div class="card">' +
-    '<label class="f">Name *</label><input type="text" id="rq-name" placeholder="Builder, homeowner, GC…">' +
-    '<label class="f">Phone or email</label><input type="text" id="rq-contact">' +
-    '<label class="f">Source</label><select id="rq-source">' +
-      REQ_SOURCES.map(function(s){ return '<option value="' + s + '">' + s + '</option>'; }).join("") + '</select>' +
-    '<label class="f">What do they need?</label><textarea id="rq-desc" placeholder="Scope, address, timing…"></textarea>' +
+    '<div class="frow"><label class="f" for="rq-name">Name *</label>' +
+    '<span class="fctl"><input type="text" id="rq-name" placeholder="Builder, homeowner, GC…"></span></div>' +
+    '<div class="frow"><label class="f" for="rq-contact">Phone or email</label>' +
+    '<span class="fctl"><input type="text" id="rq-contact"></span></div>' +
+    '<div class="frow"><label class="f" for="rq-source">Source</label>' +
+    '<span class="fctl"><select id="rq-source">' +
+      REQ_SOURCES.map(function(s){ return '<option value="' + s + '">' + s + '</option>'; }).join("") + '</select></span></div>' +
+    '<div class="frow fstack"><label class="f" for="rq-desc">What do they need?</label>' +
+    '<textarea id="rq-desc" placeholder="Scope, address, timing…"></textarea></div>' +
+    '</div>' +
     '<div class="err" id="rq-err"></div>' +
     '<button class="btn gold block" data-act="req_save">Save request</button>' +
-    '<button class="btn ghost block" data-act="req_form_cancel">Cancel</button></div>';
+    '<button class="btn ghost block" data-act="req_form_cancel">Cancel</button>';
 }
 function convertFormHTML(r){
   var contact = r.contact || "";
   var isEmail = contact.indexOf("@") !== -1;
   return '<button class="backbtn" data-act="req_form_cancel">← Cancel</button>' +
     '<h2 class="view">Convert request</h2><div class="card">' +
-    '<p class="muted">Creates a client and an empty, unpriced Draft quote shell. Prices are added later — by the Owner.</p>' +
-    '<label class="f">Client name *</label><input type="text" id="cv-name" value="' + esc(r.name) + '">' +
-    '<label class="f">Client type</label><select id="cv-type">' +
-      '<option value="builder">Builder</option><option value="homeowner">Homeowner</option><option value="commercial">Commercial</option></select>' +
+    '<p class="muted small">Creates a client and an empty, unpriced Draft quote shell. Prices are added later — by the Owner.</p>' +
+    '<div class="frow"><label class="f" for="cv-name">Client name *</label>' +
+    '<span class="fctl"><input type="text" id="cv-name" value="' + esc(r.name) + '"></span></div>' +
+    '<div class="frow"><label class="f" for="cv-type">Client type</label>' +
+    '<span class="fctl"><select id="cv-type">' +
+      '<option value="builder">Builder</option><option value="homeowner">Homeowner</option><option value="commercial">Commercial</option></select></span></div>' +
     (isEmail
-      ? '<label class="f">Email</label><input type="email" id="cv-email" value="' + esc(contact) + '">'
-      : '<label class="f">Phone</label><input type="tel" id="cv-phone" value="' + esc(contact) + '">') +
-    '<label class="f">Quote trade</label><select id="cv-trade">' +
-      '<option value="Electric">Electric</option><option value="HVAC">HVAC</option></select>' +
+      ? '<div class="frow"><label class="f" for="cv-email">Email</label>' +
+        '<span class="fctl"><input type="email" id="cv-email" value="' + esc(contact) + '"></span></div>'
+      : '<div class="frow"><label class="f" for="cv-phone">Phone</label>' +
+        '<span class="fctl"><input type="tel" id="cv-phone" value="' + esc(contact) + '"></span></div>') +
+    '<div class="frow"><label class="f" for="cv-trade">Quote trade</label>' +
+    '<span class="fctl"><select id="cv-trade">' +
+      '<option value="Electric">Electric</option><option value="HVAC">HVAC</option></select></span></div>' +
+    '</div>' +
     '<div class="err" id="cv-err"></div>' +
     '<button class="btn gold block" data-act="req_convert_save" data-id="' + r.id + '">Create client + draft quote</button>' +
-    '<button class="btn ghost block" data-act="req_form_cancel">Cancel</button></div>';
+    '<button class="btn ghost block" data-act="req_form_cancel">Cancel</button>';
 }
 
 /* ---------------- products & submittals ---------------- */
@@ -164,21 +226,23 @@ function productsHTML(){
             '<p class="muted small" style="margin:8px 0 0">Showing ' + shown + ' of ' + PRODUCTS.length + ' products</p>' +
           '</div>';
   if (!shown) {
-    h += '<div class="empty">No products match this search.</div>';
+    h += '<div class="empty"><div class="empty-ic">⌕</div><h3>No Products Found</h3>' +
+         '<p class="muted">No products match this search.</p></div>';
     return h;
   }
   order.forEach(function(cat){
-    h += '<div class="cathead">' + esc(cap(cat)) + ' (' + groups[cat].length + ')</div>';
+    h += '<div class="grouplabel">' + esc(cap(cat)) + ' · ' + groups[cat].length + '</div><div class="listcard">';
     groups[cat].forEach(function(p){
       var meta = [];
       if (p.brand) meta.push(esc(p.brand));
       if (p.model) meta.push("Model " + esc(p.model));
-      meta.push(p.trade === "hvac" ? "HVAC" : "Electrical");
+      if (!meta.length) meta.push(p.trade === "hvac" ? "HVAC" : "Electrical");
       h += '<div class="rowitem"><span class="grow"><span class="name">' + esc(p.name) + '</span>' +
              '<div class="meta">' + meta.join(" · ") + '</div></span>' +
-             (p.photo ? '<span class="badge gold">Photo on file</span>' : '<span class="badge">No photo</span>') +
+             '<span class="rval">' + (p.photo ? "Photo on file" : "No photo") + '</span>' +
            '</div>';
     });
+    h += '</div>';
   });
   return h;
 }
@@ -186,11 +250,34 @@ function productsHTML(){
 /* ---------------- settings ---------------- */
 function settingsHTML(){
   var h = '<button class="backbtn" data-act="more_go" data-val="hub">← More</button>' +
-          '<h2 class="view">Settings</h2><div class="card">' +
-          '<div class="kv"><span class="k">Signed in as</span><span class="v">' + esc(ROLE || "—") + '</span></div>' +
-          '<div class="kv"><span class="k">Clients</span><span class="v">' + DB.clients.length + '</span></div>' +
-          '<div class="kv"><span class="k">Quotes / Jobs / Invoices</span><span class="v">' + DB.quotes.length + ' / ' + DB.jobs.length + ' / ' + DB.invoices.length + '</span></div>' +
-          '<div class="kv"><span class="k">Requests</span><span class="v">' + DB.requests.length + '</span></div>';
+          '<h2 class="view">Settings</h2>';
+
+  /* account + role */
+  h += '<div class="grouplabel">Account</div><div class="card">' +
+       '<div class="kv"><span class="k">Signed in as</span><span class="v">' + esc(ROLE || "—") + '</span></div>' +
+       '<div class="kv"><span class="k">Role</span><span class="v">' + esc(ROLE || "—") + '</span></div>' +
+       '<div class="chips">' +
+         '<button data-act="set_role" data-val="Owner"' + (ROLE === "Owner" ? ' class="on"' : '') + '>Owner</button>' +
+         '<button data-act="set_role" data-val="Office"' + (ROLE === "Office" ? ' class="on"' : '') + '>Office</button>' +
+       '</div></div>' +
+       '<p class="muted small">The Owner sets prices and sends quotes/invoices. The Office sees amounts read-only.</p>';
+
+  /* appearance — Light | Dark only, default Light, never follows the OS */
+  h += '<div class="grouplabel">Appearance</div><div class="card">' +
+       '<div class="frow"><span class="f">Theme</span>' +
+       '<span class="segbtns">' +
+         '<button data-act="set_appearance" data-val="light" class="' + (APP_MODE === "light" ? "on" : "") + '">Light</button>' +
+         '<button data-act="set_appearance" data-val="dark" class="' + (APP_MODE === "dark" ? "on" : "") + '">Dark</button>' +
+       '</span></div></div>' +
+       '<p class="muted small">Your choice is remembered on this device.</p>';
+
+  /* data */
+  h += '<div class="grouplabel">Data</div><div class="card">' +
+       '<div class="kv"><span class="k">Clients</span><span class="v">' + DB.clients.length + '</span></div>' +
+       '<div class="kv"><span class="k">Quotes</span><span class="v">' + DB.quotes.length + '</span></div>' +
+       '<div class="kv"><span class="k">Jobs</span><span class="v">' + DB.jobs.length + '</span></div>' +
+       '<div class="kv"><span class="k">Invoices</span><span class="v">' + DB.invoices.length + '</span></div>' +
+       '<div class="kv"><span class="k">Requests</span><span class="v">' + DB.requests.length + '</span></div>';
   if (DB.importInfo) {
     var ci = DB.importInfo.counts || {};
     h += '<div class="kv"><span class="k">Jobber import (data.json)</span><span class="v">Merged ' + fmtDate(DB.importInfo.at) + ' — ' +
@@ -198,21 +285,20 @@ function settingsHTML(){
   } else {
     h += '<div class="kv"><span class="k">Jobber import (data.json)</span><span class="v">No data.json merged yet</span></div>';
   }
-  h += '<h3 class="sec">Role</h3>' +
-       '<p class="muted small">The Owner sets prices and sends quotes/invoices. The Office sees amounts read-only.</p>' +
-       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-         '<button class="btn' + (ROLE === "Owner" ? " gold" : " ghost") + '" data-act="set_role" data-val="Owner">Owner</button>' +
-         '<button class="btn' + (ROLE === "Office" ? " gold" : " ghost") + '" data-act="set_role" data-val="Office">Office</button>' +
-       '</div>' +
-       '<button class="btn red block" data-act="set_lock" style="margin-top:14px">🔒 Lock now</button>' +
-       '</div>';
+  h += '</div>';
 
-  h += '<div class="card"><h3 class="sec" style="margin-top:0">Backup</h3>' +
-       '<p class="muted small">Data is stored on this device (this browser). Export a backup file regularly — importing a backup replaces the data on this device. Your passcode is never part of the export.</p>' +
-       '<button class="btn block" data-act="set_export">⬇ Export data (JSON)</button>' +
-       '<label class="f">Import a backup</label>' +
-       '<input type="file" id="set-import" accept=".json,application/json" onchange="ACTIONS.set_import(this)">' +
+  /* backup */
+  h += '<div class="grouplabel">Backup</div><div class="card">' +
+       '<button class="btn block" data-act="set_export">Export data (JSON)</button>' +
+       '<div class="frow fstack"><label class="f" for="set-import">Import a backup</label>' +
+       '<input type="file" id="set-import" accept=".json,application/json" onchange="ACTIONS.set_import(this)"></div>' +
        '<div class="okmsg" id="set-ok"></div><div class="err" id="set-err"></div>' +
+       '</div>' +
+       '<p class="muted small">Data is stored on this device (this browser). Export a backup file regularly — importing a backup replaces the data on this device. Your passcode is never part of the export.</p>';
+
+  /* lock — its own group, last action */
+  h += '<div class="listcard">' +
+       '<button class="rowitem" data-act="set_lock"><span class="grow"><span class="name">Lock now</span></span></button>' +
        '</div>';
 
   h += '<p class="muted small" style="text-align:center">SHARMA360 CRM · Sharma Electric &amp; HVAC · data stays on this device<br>Lic. EC13013924 · CAC1823596</p>';
@@ -297,6 +383,17 @@ ACTIONS.set_role = function(el){
   else {
     try { ROLE = r; } catch (e) { /* core owns ROLE */ }
     try { sessionStorage.setItem("sharma-crm-role", r); } catch (e) { /* private mode */ }
+  }
+  refresh();
+};
+ACTIONS.set_appearance = function(el){
+  var mode = el.getAttribute("data-val");
+  if (mode !== "light" && mode !== "dark") return; /* Light | Dark only — no Automatic */
+  APP_MODE = mode;
+  if (typeof setAppearance === "function") { setAppearance(mode); }
+  else {
+    try { document.documentElement.setAttribute("data-theme", mode); } catch (e) { /* no DOM */ }
+    try { localStorage.setItem("sharma-crm-appearance", mode); } catch (e) { /* private mode */ }
   }
   refresh();
 };
