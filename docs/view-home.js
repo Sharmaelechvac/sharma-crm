@@ -54,16 +54,16 @@ function stagesDone(j){
 
 /* ---------------- KPI computations ---------------- */
 function kpis(){
-  var sentQ = DB.quotes.filter(function(q){ return q.status === "Sent"; });
-  var awaiting = DB.invoices.filter(function(i){ return displayInvoiceStatus(i) === "Awaiting payment"; });
-  var pastDue = DB.invoices.filter(function(i){ return displayInvoiceStatus(i) === "Past due"; });
+  var sentQ = DB.quotes.filter(function(q){ return q.status === "Sent" && !recArchived(q); });
+  var awaiting = DB.invoices.filter(function(i){ return displayInvoiceStatus(i) === "Awaiting payment" && !recArchived(i); });
+  var pastDue = DB.invoices.filter(function(i){ return displayInvoiceStatus(i) === "Past due" && !recArchived(i); });
   return {
     awaitingApproval: { count: sentQ.length, total: sentQ.reduce(function(s, q){ return s + quoteTotal(q); }, 0) },
     awaitingPayment: { count: awaiting.length, total: awaiting.reduce(function(s, i){ return s + invoiceBalance(i); }, 0) },
     pastDue: { count: pastDue.length, total: pastDue.reduce(function(s, i){ return s + invoiceBalance(i); }, 0) },
-    activeJobs: DB.jobs.filter(function(j){ return jobDisplayStatus(j) !== "Completed"; }).length,
-    lateJobs: DB.jobs.filter(function(j){ return jobDisplayStatus(j) === "Late"; }).length,
-    clients: DB.clients.length
+    activeJobs: DB.jobs.filter(function(j){ return jobDisplayStatus(j) !== "Completed" && !recArchived(j); }).length,
+    lateJobs: DB.jobs.filter(function(j){ return jobDisplayStatus(j) === "Late" && !recArchived(j); }).length,
+    clients: DB.clients.filter(function(c){ return !c.archived; }).length
   };
 }
 
@@ -72,6 +72,7 @@ function needsAttention(){
   var t = todayStr();
   var items = [];
   DB.invoices.forEach(function(i){
+    if (recArchived(i)) return;
     if (displayInvoiceStatus(i) !== "Past due") return;
     var c = clientById(i.clientId);
     var since = i.dueDate || i.sentAt || i.createdAt;
@@ -81,6 +82,7 @@ function needsAttention(){
       sub: "Invoice issued " + fmtDate(i.createdAt) + (i.dueDate ? " · due " + fmtDate(i.dueDate) : "") });
   });
   DB.jobs.forEach(function(j){
+    if (recArchived(j)) return;
     if (jobDisplayStatus(j) !== "Late") return;
     var c = clientById(j.clientId);
     items.push({ kind: "job", id: j.id, rank: 1, age: j.createdAt ? daysBetween(j.createdAt, t) : 0,
@@ -89,6 +91,7 @@ function needsAttention(){
       sub: "Job · " + (c ? c.name : "") + " · " + stagesDone(j) + " of 5 stages done" });
   });
   DB.quotes.forEach(function(q){
+    if (recArchived(q)) return;
     var c = clientById(q.clientId);
     if (q.status === "Sent") {
       var sentDate = q.sentAt || q.createdAt;
@@ -113,17 +116,20 @@ function needsAttention(){
 function recentActivity(limit){
   var items = [];
   DB.quotes.forEach(function(q){
+    if (recArchived(q)) return;
     items.push({ kind: "quote", id: q.id, date: q.createdAt || "",
       title: q.number + " — " + quoteTitle(q),
       sub: "Quote · " + q.status + " · " + money(quoteTotal(q)) });
   });
   DB.jobs.forEach(function(j){
+    if (recArchived(j)) return;
     var c = clientById(j.clientId);
     items.push({ kind: "job", id: j.id, date: j.createdAt || "",
       title: j.title || ((c ? c.name : "Job") + " — " + j.trade + " job"),
       sub: "Job · " + jobDisplayStatus(j) + " · " + stagesDone(j) + " of 5 stages done" });
   });
   DB.invoices.forEach(function(i){
+    if (recArchived(i)) return;
     var c = clientById(i.clientId);
     items.push({ kind: "invoice", id: i.id, date: i.createdAt || "",
       title: i.number + " — " + (c ? c.name : "Invoice"),

@@ -85,7 +85,7 @@ function qMatchesSearch(q){
 }
 function qFiltered(){
   var list = DB.quotes.filter(function(q){
-    return (QV.status === "All" || q.status === QV.status) && qMatchesSearch(q);
+    return !recArchived(q) && (QV.status === "All" || q.status === QV.status) && qMatchesSearch(q);
   });
   list.sort(function(a, b){
     if (QV.sort === "amt") return quoteTotal(b) - quoteTotal(a);
@@ -102,9 +102,9 @@ function qTradeTag(trade){
   return '<span class="badge">' + esc(trade || "Electric") + "</span>";
 }
 function qStatusCounts(){
-  var counts = { All: DB.quotes.length };
+  var counts = { All: DB.quotes.filter(function(q){ return !recArchived(q); }).length };
   Q_STATUSES.forEach(function(st){
-    counts[st] = DB.quotes.filter(function(q){ return q.status === st; }).length;
+    counts[st] = DB.quotes.filter(function(q){ return q.status === st && !recArchived(q); }).length;
   });
   return counts;
 }
@@ -252,6 +252,12 @@ function qDetailHTML(q){
     '<div class="kv"><span class="k">Approved</span><span class="v">' + fmtDate(q.approvedAt) + "</span></div>" +
     "</div>";
   h += "</div></div>"; /* /q-side /q-cols */
+
+  /* archive — quiet group above the destructive one */
+  if (q.archived)
+    h += '<div class="card"><button class="btn ghost block" data-act="q_unarchive" data-id="' + q.id + '">Restore from Archive</button></div>';
+  else
+    h += '<div class="card"><button class="btn ghost block" data-act="q_archive" data-id="' + q.id + '">Archive quote</button></div>';
 
   /* destructive group — last, alone (§9.4) */
   if (q.status === "Draft")
@@ -647,6 +653,21 @@ ACTIONS.q_sent = function(el){
   if (!q || q.status !== "Draft") return;
   q.status = "Sent"; q.sentAt = todayStr();
   saveDB(); qRender();
+};
+ACTIONS.q_archive = function(el){
+  var q = quoteById(el.dataset.id);
+  if (!q) return;
+  q.archived = true; saveDB();
+  QV.id = null; QV.mode = "list"; qSetSel("selQuoteId", null);
+  toast("Quote archived — find it in More \u2192 Archive");
+  qRender();
+};
+ACTIONS.q_unarchive = function(el){
+  var q = quoteById(el.dataset.id);
+  if (!q) return;
+  q.archived = false; saveDB();
+  toast("Quote restored");
+  qRender();
 };
 ACTIONS.q_approve = function(el){
   var q = quoteById(el.dataset.id);

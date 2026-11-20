@@ -44,6 +44,12 @@ function clTypePill(c){
   if(t === "commercial") return '<span class="pill blue">Commercial</span>';
   return '<span class="pill navy">Builder</span>';
 }
+/* Builder logo where one is on file (c.logo), initials otherwise. */
+function clAvatar(c, lg){
+  if (c.logo) return '<span class="avatar logo' + (lg ? ' lg' : '') + '"><img src="' + esc(c.logo) + '" alt=""></span>';
+  return '<span class="avatar' + (lg ? ' lg' : '') + '">' + clInitial(c) + '</span>';
+}
+
 function clInitial(c){
   var n = String(c.name || "").trim();
   return esc((n.charAt(0) || "?").toUpperCase());
@@ -267,7 +273,7 @@ function clStyleTag(){
     '.cl-form{background:var(--bg-grouped-2,#fff);border-radius:12px;overflow:hidden}' +
     '.cl-frow{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:44px;border-bottom:' + SEP + '}' +
     '.cl-frow:last-child{border-bottom:0}' +
-    '.cl-flabel{flex:0 0 104px;font-size:17px;color:var(--label,#000)}' +
+    '.cl-flabel{flex:0 0 104px;font-size:17px;font-weight:600;color:var(--label,#000)}' +
     '.cl-frow.err-row .cl-flabel{color:var(--red,#FF3B30)}' +
     '.cl-frow input,.cl-frow select{flex:1;min-width:0;border:0;background:transparent;min-height:44px;padding:10px 0;font-size:17px;text-align:right;color:var(--label,#000);border-radius:0;box-shadow:none}' +
     '.cl-frow input.ta-l{text-align:left}' +
@@ -336,7 +342,7 @@ function clListHTML(){
     var owed = clientBalanceOwed(c.id);
     var pastDue = owed > 0 ? clPastDue(c.id) : 0;
     h += '<button class="rowitem" data-act="cl_open" data-id="' + c.id + '">' +
-      '<span class="avatar">' + clInitial(c) + '</span>' +
+      clAvatar(c) +
       '<span class="grow"><span class="name">' + esc(c.name) + '</span>' +
       '<div class="meta">' +
         (ct ? esc(ct.name) + (addr ? " · " : "") : "") + (addr ? esc(addr) : "") +
@@ -359,7 +365,7 @@ function clListHTML(){
     var owed = clientBalanceOwed(c.id);
     var pastDue = owed > 0 ? clPastDue(c.id) : 0;
     h += '<tr data-act="cl_open" data-id="' + c.id + '">' +
-      '<td><span style="display:flex;gap:12px;align-items:center"><span class="avatar">' + clInitial(c) + '</span>' +
+      '<td><span style="display:flex;gap:12px;align-items:center">' + clAvatar(c) + '' +
         '<span><b>' + esc(c.name) + '</b>' + (addr ? '<div class="small muted">' + esc(addr) + '</div>' : '') + '</span></span></td>' +
       '<td>' + clTypeLabel(c.type) + '</td>' +
       '<td>' + (ct ? esc(ct.name) + (ct.role ? '<div class="small muted">' + esc(ct.role) + '</div>' : '') : '<span class="muted">—</span>') + '</td>' +
@@ -492,7 +498,7 @@ function clDetailHTML(c){
   if(qaProp) qa += '<a class="cl-qa" href="https://maps.apple.com/?q=' + encodeURIComponent(qaProp.address) + '" target="_blank" rel="noopener">' + clIcon("pin") + '<span>Directions</span></a>';
 
   h += '<div class="dhead"><div class="cl-dh">' +
-    '<span class="avatar lg">' + clInitial(c) + '</span>' +
+    clAvatar(c, true) +
     '<div class="grow"><div class="dh-name">' + esc(c.name) + '</div>' +
     '<div class="dh-sub">' + clTypeLabel(c.type) +
       (c.archived ? ' · Archived' : '') +

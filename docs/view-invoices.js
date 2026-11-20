@@ -121,6 +121,7 @@ function invSummary(){
               draftN: 0, draftTotal: 0, paidMonth: 0, paidMonthN: 0 };
   const ym = todayStr().slice(0, 7);
   DB.invoices.forEach(inv => {
+    if(recArchived(inv)) return;
     const st = displayInvoiceStatus(inv);
     if(st === "Awaiting payment"){ s.awaiting += invoiceBalance(inv); s.awaitingN++; }
     else if(st === "Past due"){ s.pastDue += invoiceBalance(inv); s.pastDueN++; }
@@ -136,6 +137,7 @@ function invSummary(){
 function invFiltered(){
   const q = INV.q.trim().toLowerCase();
   const list = DB.invoices.filter(inv => {
+    if(recArchived(inv)) return false;
     if(INV.filter !== "All" && displayInvoiceStatus(inv) !== INV.filter) return false;
     if(!q) return true;
     const num = String(inv.number || "").toLowerCase();
@@ -181,7 +183,7 @@ function invListHTML(){
     "</select></div>";
   h += '<div class="chips">' + INV_FILTERS.map(f =>
       '<button data-act="inv_filter" data-f="' + f + '"' + (INV.filter === f ? ' class="on"' : "") + ">" + f + "</button>").join("") + "</div>";
-  h += '<div class="inv-count">Showing ' + list.length + " of " + DB.invoices.length + " invoices</div>";
+  h += '<div class="inv-count">Showing ' + list.length + " of " + DB.invoices.filter(i => !recArchived(i)).length + " invoices</div>";
 
   if(DB.invoices.length === 0){
     h += '<div class="empty">No invoices yet. Build the first one with the Invoice Maker — from scratch, or straight from a job.</div>';
@@ -620,6 +622,12 @@ function invDetailHTML(inv){
     "</div>";
   h += "</div></div>"; /* /side + /detail-grid */
 
+  /* archive — quiet group above the destructive one */
+  if (inv.archived)
+    h += '<div class="card"><button class="btn ghost block" data-act="inv_unarchive" data-id="' + inv.id + '">Restore from Archive</button></div>';
+  else
+    h += '<div class="card"><button class="btn ghost block" data-act="inv_archive" data-id="' + inv.id + '">Archive invoice</button></div>';
+
   /* destructive group — last, alone (§9.4); two-step confirm stays */
   if(inv.status === "Draft" && INV.confirmDel !== inv.id){
     h += '<div class="dangerzone"><button class="btn danger block" data-act="inv_del" data-id="' + inv.id + '">Delete invoice</button></div>';
@@ -731,6 +739,21 @@ function invCrossNav(tab, key, id){
 
 ACTIONS.inv_open = function(el){ INV.selId = invId(el); INV.docId = null; INV.payErr = ""; INV.confirmDel = null; INV.flash = ""; invRender(); };
 ACTIONS.inv_back = function(){ INV.selId = null; INV.docId = null; INV.payErr = ""; INV.confirmDel = null; invRender(); };
+ACTIONS.inv_archive = function(el){
+  const inv = invoiceById(invId(el));
+  if(!inv) return;
+  inv.archived = true; saveDB();
+  INV.selId = null; INV.docId = null;
+  toast("Invoice archived — find it in More \u2192 Archive");
+  invRender();
+};
+ACTIONS.inv_unarchive = function(el){
+  const inv = invoiceById(invId(el));
+  if(!inv) return;
+  inv.archived = false; saveDB();
+  toast("Invoice restored");
+  invRender();
+};
 ACTIONS.inv_filter = function(el){ INV.filter = el.getAttribute("data-f") || "All"; invRender(); };
 ACTIONS.inv_new = function(){
   INV.flash = ""; INV.editingId = null; INV.draft = invNewDraft();

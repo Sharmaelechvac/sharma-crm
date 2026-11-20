@@ -73,6 +73,7 @@ function sortedClients(){
 function filteredJobs(){
   var q = S.q.trim().toLowerCase();
   var list = DB.jobs.filter(function(j){
+    if (recArchived(j)) return false;
     var st = jobDisplayStatus(j);
     if (S.filter !== "All" && st !== S.filter) return false;
     if (!q) return true;
@@ -139,7 +140,7 @@ function listHTML(){
            '<option value="amt-asc"' + (S.sort === "amt-asc" ? " selected" : "") + '>Amount: low to high</option>' +
            '<option value="client"' + (S.sort === "client" ? " selected" : "") + '>Client A–Z</option>' +
          '</select></span></div>' +
-         '<p class="muted small" style="margin:10px 0 0">' + list.length + ' of ' + DB.jobs.length + ' jobs</p>' +
+         '<p class="muted small" style="margin:10px 0 0">' + list.length + ' of ' + DB.jobs.filter(function(x){ return !recArchived(x); }).length + ' jobs</p>' +
        '</div>';
 
   if (DB.jobs.length === 0) {
@@ -253,6 +254,12 @@ function detailHTML(j){
          '</div>';
   }
   h += '</div></div>';
+
+  /* archive — quiet group above the destructive one */
+  if (j.archived)
+    h += '<div class="card"><button class="btn ghost block" data-act="job_unarchive" data-id="' + j.id + '">Restore from Archive</button></div>';
+  else
+    h += '<div class="card"><button class="btn ghost block" data-act="job_archive" data-id="' + j.id + '">Archive job</button></div>';
 
   /* destructive — last, alone (§9.4) */
   h += '<div class="card"><button class="btn ghost del block" data-act="job_delete" data-id="' + j.id + '">Delete job</button></div>';
@@ -387,6 +394,21 @@ ACTIONS.job_save = function(){
   S.sel = j.id;
   JF = null;
   exitForm("jobs");
+};
+ACTIONS.job_archive = function(el){
+  var j = jobById(el.getAttribute("data-id"));
+  if (!j) return;
+  j.archived = true; saveDB();
+  if (S.sel === j.id) S.sel = null;
+  toast("Job archived — find it in More \u2192 Archive");
+  refresh();
+};
+ACTIONS.job_unarchive = function(el){
+  var j = jobById(el.getAttribute("data-id"));
+  if (!j) return;
+  j.archived = false; saveDB();
+  toast("Job restored");
+  refresh();
 };
 ACTIONS.job_delete = function(el){
   var j = jobById(el.getAttribute("data-id"));

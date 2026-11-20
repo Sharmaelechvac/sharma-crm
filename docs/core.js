@@ -323,6 +323,8 @@ function mergeClientRecord(rec){
   }
   if(rec.name) c.name = String(rec.name);
   if(rec.type) c.type = cleanClientType(rec.type);
+  if(rec.logo) c.logo = String(rec.logo);
+  if(rec.archived != null) c.archived = !!rec.archived;
   ["phone", "email", "billingNotes", "notes"].forEach(f => {
     if(rec[f] && !c[f]) c[f] = String(rec[f]);
   });
@@ -601,6 +603,13 @@ let quoteFilter = "All", quoteSort = "new";
 let productSearch = "";
 
 function clientById(id){ return DB.clients.find(c => c.id === id) || null; }
+/* Archive: a record is archived when its own flag is set OR its client
+   is archived (archiving a client archives everything under it, and
+   restoring the client brings it all back). Archived records leave
+   every list, dashboard figure and search result; they live in the
+   Archive section (More tab) and on their client's own page. */
+function clientArchived(clientId){ const c = clientId ? clientById(clientId) : null; return !!(c && c.archived); }
+function recArchived(r){ return !!(r && (r.archived || clientArchived(r.clientId))); }
 function quoteById(id){ return DB.quotes.find(q => q.id === id) || null; }
 function jobById(id){ return DB.jobs.find(j => j.id === id) || null; }
 function invoiceById(id){ return DB.invoices.find(i => i.id === id) || null; }
@@ -708,40 +717,41 @@ function clientMoney(clientId){
 }
 /* dashboard helpers (Jobber Home insights) */
 function quotesAwaitingApproval(){
-  const list = DB.quotes.filter(q => q.status === "Sent");
+  const list = DB.quotes.filter(q => q.status === "Sent" && !recArchived(q));
   return { count: list.length, total: list.reduce((s, q) => s + quoteTotal(q), 0), list: list };
 }
 function invoicesAwaitingPayment(){
-  const list = DB.invoices.filter(i => displayInvoiceStatus(i) === "Awaiting payment");
+  const list = DB.invoices.filter(i => displayInvoiceStatus(i) === "Awaiting payment" && !recArchived(i));
   return { count: list.length, total: list.reduce((s, i) => s + invoiceBalance(i), 0), list: list };
 }
 function invoicesPastDue(){
-  const list = DB.invoices.filter(i => displayInvoiceStatus(i) === "Past due");
+  const list = DB.invoices.filter(i => displayInvoiceStatus(i) === "Past due" && !recArchived(i));
   return { count: list.length, total: list.reduce((s, i) => s + invoiceBalance(i), 0), list: list };
 }
 function activeJobs(){
-  return DB.jobs.filter(j => jobDisplayStatus(j) !== "Completed");
+  return DB.jobs.filter(j => jobDisplayStatus(j) !== "Completed" && !recArchived(j));
 }
 function jobsScheduledToday(){
   const t = todayStr();
-  return DB.jobs.filter(j => STAGES.some(st => {
+  return DB.jobs.filter(j => !recArchived(j) && STAGES.some(st => {
     const s = j.stages && j.stages[st.key];
     return s && s.status === "sched" && s.date === t;
   }));
 }
 function recentActivity(limit){
   const items = [];
-  DB.quotes.forEach(q => items.push({ kind: "quote", id: q.id, date: q.createdAt || "",
-    title: q.number + " — " + quoteTitle(q), sub: "Quote · " + q.status + " · " + money(quoteTotal(q)) }));
+  DB.quotes.forEach(q => { if(recArchived(q)) return; items.push({ kind: "quote", id: q.id, date: q.createdAt || "",
+    title: q.number + " — " + quoteTitle(q), sub: "Quote · " + q.status + " · " + money(quoteTotal(q)) }); });
   DB.jobs.forEach(j => {
+    if(recArchived(j)) return;
     const c = clientById(j.clientId);
     items.push({ kind: "job", id: j.id, date: j.createdAt || "",
       title: (c ? c.name : "Job") + " — " + j.trade + " job",
       sub: "Job · " + jobDisplayStatus(j) + " · " + jobDoneCount(j) + " of 5 stages done" });
   });
-  DB.invoices.forEach(i => items.push({ kind: "invoice", id: i.id, date: i.createdAt || "",
+  DB.invoices.forEach(i => { if(recArchived(i)) return; items.push({ kind: "invoice", id: i.id, date: i.createdAt || "",
     title: i.number + " — " + (clientById(i.clientId) ? clientById(i.clientId).name : "Invoice"),
-    sub: "Invoice · " + displayInvoiceStatus(i) + " · " + money(i.amount) }));
+    sub: "Invoice · " + displayInvoiceStatus(i) + " · " + money(i.amount) }); });
   items.sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.title.localeCompare(a.title));
   return items.slice(0, limit || 8);
 }
@@ -846,10 +856,10 @@ function animateScreen(main){
 function updateNav(){
   if(!DB) return;
   const set = (id, n) => { const e = document.getElementById(id); if(e) e.textContent = n; };
-  set("navcount-clients", DB.clients.length);
-  set("navcount-quotes", DB.quotes.length);
-  set("navcount-jobs", DB.jobs.length);
-  set("navcount-invoices", DB.invoices.length);
+  set("navcount-clients", DB.clients.filter(c => !c.archived).length);
+  set("navcount-quotes", DB.quotes.filter(q => !recArchived(q)).length);
+  set("navcount-jobs", DB.jobs.filter(j => !recArchived(j)).length);
+  set("navcount-invoices", DB.invoices.filter(i => !recArchived(i)).length);
   const pd = invoicesPastDue().count;
   const badge = document.getElementById("tabbadge-invoices");
   if(badge){ badge.textContent = pd; badge.classList.toggle("hidden", pd === 0); }
@@ -971,10 +981,12 @@ function searchAll(q){
   if(q.length < 2 || !DB) return [];
   const out = [];
   DB.clients.forEach(c => {
+    if(c.archived) return;
     if(c.name.toLowerCase().indexOf(q) >= 0)
       out.push({ kind: "client", id: c.id, title: c.name, sub: typeLabel(c.type) + " · Client" });
   });
   DB.quotes.forEach(x => {
+    if(recArchived(x)) return;
     const c = clientById(x.clientId);
     if(x.number.toLowerCase().indexOf(q) >= 0 || quoteTitle(x).toLowerCase().indexOf(q) >= 0 ||
        (c && c.name.toLowerCase().indexOf(q) >= 0))
@@ -982,12 +994,14 @@ function searchAll(q){
         sub: "Quote · " + (c ? c.name : "") + " · " + money(quoteTotal(x)) });
   });
   DB.jobs.forEach(x => {
+    if(recArchived(x)) return;
     const c = clientById(x.clientId);
     const title = x.title || ((c ? c.name : "Job") + " — " + x.trade + " job");
     if(title.toLowerCase().indexOf(q) >= 0 || (x.jobberNumber && String(x.jobberNumber).indexOf(q) >= 0))
       out.push({ kind: "job", id: x.id, title: title, sub: "Job · " + jobDisplayStatus(x) + (c ? " · " + c.name : "") });
   });
   DB.invoices.forEach(x => {
+    if(recArchived(x)) return;
     const c = clientById(x.clientId);
     if(x.number.toLowerCase().indexOf(q) >= 0 || (c && c.name.toLowerCase().indexOf(q) >= 0))
       out.push({ kind: "invoice", id: x.id, title: x.number + " — " + (c ? c.name : "Invoice"),

@@ -102,6 +102,11 @@ function hubHTML(){
          tileIcon('<path d="M4.5 7.5h15M4.5 12h15M4.5 16.5h15"/><circle cx="9" cy="7.5" r="2.1"/><circle cx="15.5" cy="12" r="2.1"/><circle cx="8" cy="16.5" r="2.1"/>') +
          '<span class="grow"><span class="name">Settings</span></span>' +
          '<span class="chev">›</span></button>';
+  var arcN = archivedClients().length + archivedRecords("quotes").length + archivedRecords("jobs").length + archivedRecords("invoices").length;
+  h += '<button class="rowitem" data-act="more_go" data-val="archive">' +
+         tileIcon('<rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5.5 8.5v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9"/><path d="M10 12.5h4"/>') +
+         '<span class="grow"><span class="name">Archive</span></span>' +
+         (arcN ? '<span class="rval">' + arcN + '</span>' : '') + '<span class="chev">›</span></button>';
   h += '</div>';
   return h;
 }
@@ -305,6 +310,80 @@ function settingsHTML(){
   return h;
 }
 
+/* ---------------- archive ----------------
+   Everything archived lives here: clients (whose quotes, jobs and
+   invoices are archived with them) and individually archived records.
+   Restoring a client restores everything under it. */
+function archivedClients(){ return DB.clients.filter(function(c){ return !!c.archived; }); }
+function archivedRecords(kind){
+  return DB[kind].filter(function(r){ return !!r.archived && !clientArchived(r.clientId); });
+}
+function arcAvatar(c){
+  if (c.logo) return '<span class="avatar logo"><img src="' + esc(c.logo) + '" alt=""></span>';
+  return '<span class="avatar">' + (typeof clInitial === "function" ? clInitial(c) : esc((c.name || "?").charAt(0))) + '</span>';
+}
+function archiveHTML(){
+  var h = '<button class="backbtn" data-act="more_go" data-val="hub">\u2190 More</button>' +
+          '<h2 class="view">Archive</h2>';
+  var clients = archivedClients();
+  var qs = archivedRecords("quotes"), js = archivedRecords("jobs"), is = archivedRecords("invoices");
+  if (!clients.length && !qs.length && !js.length && !is.length) {
+    return h + '<div class="empty"><div class="empty-ic">\u25A4</div><h3>Nothing Archived</h3>' +
+      '<p class="muted">Archived clients and records land here, out of the lists and totals but never deleted.</p></div>';
+  }
+  if (clients.length) {
+    h += '<div class="grouplabel">Archived clients</div><div class="listcard">';
+    clients.forEach(function(c){
+      var nq = DB.quotes.filter(function(x){ return x.clientId === c.id; }).length;
+      var nj = DB.jobs.filter(function(x){ return x.clientId === c.id; }).length;
+      var ni = DB.invoices.filter(function(x){ return x.clientId === c.id; }).length;
+      h += '<div class="rowitem">' + arcAvatar(c) +
+        '<span class="grow"><span class="name">' + esc(c.name) + '</span>' +
+        '<span class="meta">' + nq + ' quotes \u00B7 ' + nj + ' jobs \u00B7 ' + ni + ' invoices</span></span>' +
+        '<button class="btn sm ghost" data-act="arc_restore_client" data-id="' + c.id + '">Restore</button>' +
+        '<button class="btn sm ghost" data-act="arc_open_client" data-id="' + c.id + '">Open</button></div>';
+    });
+    h += '</div><p class="muted small">A client\u2019s quotes, jobs and invoices are archived with it \u2014 restoring the client brings them all back.</p>';
+  }
+  var groups = [["Quotes", qs, function(r){ return r.number + " \u2014 " + quoteTitle(r); }, function(r){ return money(quoteTotal(r)); }],
+                ["Jobs", js, function(r){ return jobTitle(r); }, function(r){ return money(r.amount); }],
+                ["Invoices", is, function(r){ return r.number; }, function(r){ return money(r.amount); }]];
+  groups.forEach(function(g){
+    if (!g[1].length) return;
+    h += '<div class="grouplabel">Archived ' + g[0].toLowerCase() + '</div><div class="listcard">';
+    g[1].forEach(function(r){
+      var c = clientById(r.clientId);
+      h += '<div class="rowitem"><span class="grow"><span class="name">' + esc(g[2](r)) + '</span>' +
+        '<span class="meta">' + (c ? esc(c.name) : "") + '</span></span>' +
+        '<span class="amt">' + g[3](r) + '</span>' +
+        '<button class="btn sm ghost" data-act="arc_restore_rec" data-kind="' + g[0].toLowerCase() + '" data-id="' + r.id + '">Restore</button></div>';
+    });
+    h += '</div>';
+  });
+  return h;
+}
+ACTIONS.arc_restore_client = function(el){
+  var c = clientById(el.getAttribute("data-id"));
+  if (!c) return;
+  c.archived = false; saveDB();
+  toast(c.name + " restored");
+  refresh();
+};
+ACTIONS.arc_open_client = function(el){
+  var id = el.getAttribute("data-id");
+  if (typeof window !== "undefined") window.CRM_OPEN = { tab: "clients", id: id };
+  navTo("clients");
+};
+ACTIONS.arc_restore_rec = function(el){
+  var kind = el.getAttribute("data-kind"), id = el.getAttribute("data-id");
+  var list = DB[kind] || [];
+  var r = list.filter(function(x){ return x.id === id; })[0];
+  if (!r) return;
+  r.archived = false; saveDB();
+  toast("Restored");
+  refresh();
+};
+
 /* ---------------- view registration ---------------- */
 VIEWS.more = function(){
   if (typeof window !== "undefined" && window.CRM_OPEN && window.CRM_OPEN.tab === "more") {
@@ -314,6 +393,7 @@ VIEWS.more = function(){
   if (M.section === "requests") return requestsHTML();
   if (M.section === "products") return productsHTML();
   if (M.section === "settings") return settingsHTML();
+  if (M.section === "archive") return archiveHTML();
   return hubHTML();
 };
 
