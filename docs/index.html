@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SHARMA360 · CRM — Sharma Electric &amp; HVAC</title>
+<style>
+  :root{
+    --navy:#264387; --navy-dark:#1b3163; --gold:#F0A846; --gold-dark:#c07f1d;
+    --ink:#182430; --muted:#5a6b7d; --line:#d7dee6; --bg:#f2f5f9; --card:#ffffff;
+    --green:#177245; --red:#b3261e; --amber:#96690a;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{font-size:18px;}
+  body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg); color:var(--ink); line-height:1.45; padding-bottom:96px;}
+  /* ---------- header ---------- */
+  header.app{background:var(--navy); color:#fff; padding:16px 18px 14px; position:sticky; top:0; z-index:20;
+       box-shadow:0 2px 10px rgba(27,49,99,.35);}
+  header.app .row{display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:860px; margin:0 auto;}
+  header.app h1{font-size:1.35rem; margin:0; letter-spacing:.5px; font-weight:800;}
+  header.app h1 .gold{color:var(--gold);}
+  header.app .sub{font-size:.82rem; opacity:.85; margin-top:2px;}
+  .hbtns{display:flex; gap:8px; align-items:center;}
+  .rolebadge{background:var(--gold); color:#23180a; font-weight:700; font-size:.78rem;
+       padding:6px 12px; border-radius:999px; white-space:nowrap;}
+  .iconbtn{background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.35);
+       border-radius:10px; min-width:48px; min-height:48px; font-size:1.15rem; cursor:pointer;}
+  /* ---------- layout ---------- */
+  main{max-width:860px; margin:0 auto; padding:16px 14px 8px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+       padding:16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(24,36,48,.05);}
+  h2.view{font-size:1.3rem; margin:4px 0 12px; color:var(--navy-dark);}
+  h3.sec{font-size:1.05rem; margin:18px 0 8px; color:var(--navy-dark);}
+  .muted{color:var(--muted);} .small{font-size:.85rem;}
+  .empty{padding:22px 16px; text-align:center; color:var(--muted); border:1.5px dashed var(--line);
+       border-radius:var(--radius); background:#fff; margin-bottom:14px;}
+  /* ---------- buttons & forms ---------- */
+  button, .btn{font:inherit; cursor:pointer;}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:52px;
+       padding:12px 20px; border-radius:12px; border:1px solid var(--navy); background:var(--navy);
+       color:#fff; font-weight:700; text-decoration:none; font-size:1rem;}
+  .btn.gold{background:var(--gold); border-color:var(--gold-dark); color:#23180a;}
+  .btn.ghost{background:#fff; color:var(--navy); border-color:var(--navy);}
+  .btn.green{background:var(--green); border-color:var(--green);}
+  .btn.red{background:#fff; color:var(--red); border-color:var(--red);}
+  .btn.block{display:flex; width:100%; margin:8px 0;}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+  label.f{display:block; font-weight:600; margin:14px 0 6px; font-size:.95rem;}
+  input[type=text],input[type=email],input[type=tel],input[type=number],input[type=date],
+  input[type=password],select,textarea{
+       width:100%; font:inherit; padding:13px 12px; min-height:52px; border:1.5px solid var(--line);
+       border-radius:10px; background:#fff; color:var(--ink);}
+  textarea{min-height:84px; resize:vertical;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--navy); outline-offset:1px; border-color:var(--navy);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media (max-width:560px){ .grid2{grid-template-columns:1fr;} }
+  /* ---------- list rows ---------- */
+  .rowitem{display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:#fff;
+       border:1px solid var(--line); border-radius:var(--radius); padding:15px 16px; margin-bottom:10px;
+       min-height:64px; cursor:pointer; color:var(--ink); font:inherit;}
+  .rowitem:active{background:#eef3fa;}
+  .rowitem .grow{flex:1; min-width:0;}
+  .rowitem .name{font-weight:700; font-size:1.02rem; overflow:hidden; text-overflow:ellipsis;}
+  .rowitem .meta{color:var(--muted); font-size:.85rem; margin-top:2px;}
+  .rowitem .amt{font-weight:800; white-space:nowrap;}
+  .chev{color:var(--muted); font-size:1.3rem;}
+  .badge{display:inline-block; font-size:.72rem; font-weight:700; letter-spacing:.4px; padding:4px 10px;
+       border-radius:999px; background:#e4ebf5; color:var(--navy-dark); text-transform:uppercase; white-space:nowrap;}
+  .badge.gold{background:#fdeecb; color:#7a5205;}
+  .badge.green{background:#d9efe2; color:var(--green);}
+  .badge.red{background:#f9dcd9; color:var(--red);}
+  .badge.grey{background:#e8edf2; color:var(--muted);}
+  .tag-draft{display:inline-block; background:var(--red); color:#fff; font-weight:800; font-size:.78rem;
+       padding:5px 12px; border-radius:8px; letter-spacing:.4px;}
+  /* ---------- today stats ---------- */
+  .stats{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;}
+  @media (min-width:640px){ .stats{grid-template-columns:repeat(4,1fr);} }
+  .stat{background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:16px 14px; text-align:center;}
+  .stat .n{font-size:1.9rem; font-weight:800; color:var(--navy); line-height:1.1;}
+  .stat .l{font-size:.82rem; color:var(--muted); margin-top:4px; font-weight:600;}
+  .stat .s{font-size:.85rem; font-weight:700; color:var(--ink); margin-top:2px;}
+  /* ---------- stages ---------- */
+  .stage{border:1px solid var(--line); border-radius:12px; padding:13px 14px; margin-bottom:10px; background:#fff;}
+  .stage .top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .stage .nm{font-weight:700;}
+  .segbtns{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;}
+  .segbtns button{flex:1; min-height:48px; padding:9px 6px; border-radius:10px; border:1.5px solid var(--line);
+       background:#fff; font-weight:600; font-size:.88rem; color:var(--muted);}
+  .segbtns button.on-not{background:#e8edf2; color:var(--ink); border-color:var(--muted);}
+  .segbtns button.on-sched{background:#fdeecb; color:#7a5205; border-color:var(--gold-dark);}
+  .segbtns button.on-done{background:var(--green); color:#fff; border-color:var(--green);}
+  .stage input[type=date]{margin-top:10px;}
+  /* ---------- line items ---------- */
+  .linerow{display:grid; grid-template-columns:1fr 74px 110px 44px; gap:8px; margin-bottom:8px; align-items:center;}
+  .linerow input{min-height:48px; padding:10px;}
+  .linerow .del{min-height:48px; border-radius:10px; border:1.5px solid var(--red); background:#fff; color:var(--red); font-size:1.05rem;}
+  table.lines{width:100%; border-collapse:collapse; margin:8px 0;}
+  table.lines th, table.lines td{padding:9px 6px; border-bottom:1px solid var(--line); text-align:left; font-size:.95rem;}
+  table.lines th{color:var(--muted); font-size:.8rem; text-transform:uppercase; letter-spacing:.4px;}
+  table.lines td.num, table.lines th.num{text-align:right; white-space:nowrap;}
+  .totalrow{display:flex; justify-content:space-between; font-size:1.15rem; font-weight:800; padding:10px 2px; color:var(--navy-dark);}
+  /* ---------- tab bar ---------- */
+  nav.tabs{position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1.5px solid var(--line);
+       display:flex; z-index:30; padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -2px 12px rgba(24,36,48,.08);}
+  nav.tabs button{flex:1; background:none; border:none; padding:12px 2px 13px; font-size:.82rem; font-weight:700;
+       color:var(--muted); min-height:62px; cursor:pointer;}
+  nav.tabs button .ic{display:block; font-size:1.35rem; margin-bottom:2px;}
+  nav.tabs button.on{color:var(--navy);}
+  nav.tabs button.on .ic{color:var(--gold-dark);}
+  /* ---------- lock / setup ---------- */
+  .lockwrap{max-width:440px; margin:0 auto; padding:34px 18px;}
+  .lockcard{background:#fff; border:1px solid var(--line); border-radius:18px; padding:26px 22px;
+       box-shadow:0 6px 24px rgba(27,49,99,.12); text-align:center;}
+  .lockcard .brand{font-size:1.5rem; font-weight:800; color:var(--navy); letter-spacing:.5px;}
+  .lockcard .brand .gold{color:var(--gold-dark);}
+  .lockcard .sub{color:var(--muted); font-size:.9rem; margin:4px 0 8px;}
+  .err{background:#f9dcd9; color:var(--red); border-radius:10px; padding:11px 13px; margin:12px 0; font-weight:600; display:none;}
+  .okmsg{background:#d9efe2; color:var(--green); border-radius:10px; padding:11px 13px; margin:12px 0; font-weight:600; display:none;}
+  .rolebtn{display:flex; width:100%; align-items:center; gap:14px; text-align:left; background:#fff;
+       border:2px solid var(--navy); border-radius:14px; padding:18px; margin:10px 0; min-height:76px; cursor:pointer; font:inherit;}
+  .rolebtn .ic{font-size:1.7rem;}
+  .rolebtn .t{font-weight:800; font-size:1.1rem; color:var(--navy-dark);}
+  .rolebtn .d{color:var(--muted); font-size:.85rem;}
+  .hidden{display:none !important;}
+  .backbtn{background:none; border:none; color:var(--navy); font-weight:700; font-size:1rem;
+       padding:10px 4px; min-height:48px; cursor:pointer;}
+  .kv{display:flex; justify-content:space-between; gap:14px; padding:7px 0; border-bottom:1px solid #eef1f5;}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{color:var(--muted); font-size:.9rem;} .kv .v{font-weight:600; text-align:right;}
+  .followup{border-left:5px solid var(--gold); }
+  .followup.red{border-left-color:var(--red);}
+</style>
+</head>
+<body>
+
+<!-- ============ LOCK / SETUP / ROLE (shown before the app) ============ -->
+<div id="gate"></div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="appshell" class="hidden">
+  <header class="app">
+    <div class="row">
+      <div>
+        <h1>SHARMA<span class="gold">360</span> · CRM</h1>
+        <div class="sub">Sharma Electric &amp; HVAC</div>
+      </div>
+      <div class="hbtns">
+        <span class="rolebadge" id="rolebadge">Owner</span>
+        <button class="iconbtn" id="settingsbtn" aria-label="Settings" title="Settings">⚙️</button>
+      </div>
+    </div>
+  </header>
+  <main id="main"></main>
+  <nav class="tabs" id="tabbar">
+    <button data-tab="today"><span class="ic">🏠</span>Today</button>
+    <button data-tab="clients"><span class="ic">👥</span>Clients</button>
+    <button data-tab="quotes"><span class="ic">📄</span>Quotes</button>
+    <button data-tab="jobs"><span class="ic">🔧</span>Jobs</button>
+    <button data-tab="invoices"><span class="ic">💲</span>Invoices</button>
+  </nav>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   SHARMA360 · CRM — Stage A (core flow)
+   Single-file app. Data lives in localStorage under "sharma-crm-v1".
+   Only the SHA-256 hash of the passcode is stored — never the passcode.
+   ===================================================================== */
+const LS_KEY = "sharma-crm-v1";
+const SS_ROLE = "sharma-crm-role";
+
+/* Seed: the 40 builder clients imported from the Bid Tracker (2026-11-20).
+   No other seed data exists — quotes, jobs and invoices start empty. */
+const SEED_CLIENTS = [{"id": "c001", "type": "builder", "name": "A.L. Milton", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c002", "type": "builder", "name": "AMG / Blackstone HOA", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c003", "type": "builder", "name": "Arena Americas", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c004", "type": "builder", "name": "BCL Homes", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c005", "type": "builder", "name": "BR Ross Construction Group", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c006", "type": "builder", "name": "Billy Hastings", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c007", "type": "builder", "name": "Bonesteel Construction", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c008", "type": "builder", "name": "Castle Group / Vizcaya Heights Multicondo", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c009", "type": "builder", "name": "Chase Sterling Group", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c010", "type": "builder", "name": "Cintra Development", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c011", "type": "builder", "name": "Citrus Hills", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c012", "type": "builder", "name": "Coastal Construction (CCI Florida)", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c013", "type": "builder", "name": "Coaston Homes", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c014", "type": "builder", "name": "Construction Vix", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c015", "type": "builder", "name": "Craig White", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c016", "type": "builder", "name": "DNJ Builders", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c017", "type": "builder", "name": "DNR Contracting", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c018", "type": "builder", "name": "DSA Empire", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c019", "type": "builder", "name": "EXJ Root", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c020", "type": "builder", "name": "Fickett Builders", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c021", "type": "builder", "name": "GSB Construction", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c022", "type": "builder", "name": "Groninger Custom Homes", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c023", "type": "builder", "name": "Guida Group", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c024", "type": "builder", "name": "Infinity Homes Developments", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c025", "type": "builder", "name": "Jim Cody", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c026", "type": "builder", "name": "Karma Construction Company", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c027", "type": "builder", "name": "Liberty Development", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c028", "type": "builder", "name": "Licciardello Construction (LCI)", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c029", "type": "builder", "name": "Logan Construction Group", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c030", "type": "builder", "name": "MRCELA Custom Homes", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c031", "type": "builder", "name": "NOK Construction", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c032", "type": "builder", "name": "Rocklyn Homes", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c033", "type": "builder", "name": "Ron Hoffman", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c034", "type": "builder", "name": "SI Homes", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c035", "type": "builder", "name": "Sagewood Corporation", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c036", "type": "builder", "name": "Summit GC", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c037", "type": "builder", "name": "Tampa Shell Contractors", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c038", "type": "builder", "name": "Timed Construction", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c039", "type": "builder", "name": "Vakul Development", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}, {"id": "c040", "type": "builder", "name": "Z Brothers Construction", "contacts": [], "properties": [], "notes": "", "source": "Bid Tracker import 2026-11-20"}];
+
+/* ---------------- utilities ---------------- */
+const $ = (sel, el) => (el || document).querySelector(sel);
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function uid(prefix){ return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+function fmtDate(iso){
+  if(!iso) return "—";
+  const p = String(iso).split("-");
+  if(p.length !== 3) return esc(iso);
+  return MONTHS[parseInt(p[1],10)-1] + " " + parseInt(p[2],10) + ", " + p[0];
+}
+function daysBetween(fromIso, toIso){
+  const a = new Date(fromIso + "T12:00:00"), b = new Date(toIso + "T12:00:00");
+  return Math.round((b - a) / 86400000);
+}
+const USD = new Intl.NumberFormat("en-US", {style:"currency", currency:"USD"});
+function money(n){ return USD.format(Number(n) || 0); }
+function typeLabel(t){ t = String(t || "builder").toLowerCase(); return t === "builder" ? "Builder" : (t === "homeowner" ? "Homeowner" : (t === "commercial" ? "Commercial" : "Builder")); }
+
+/* ---------------- data store ---------------- */
+let DB = null;
+function blankDB(){
+  return {
+    passHash: null,
+    clients: [],
+    quotes: [],
+    jobs: [],
+    invoices: [],
+    seq: { quote: 1001, invoice: 1001, client: 41 }
+  };
+}
+function loadDB(){
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ DB = JSON.parse(raw); return; }
+  } catch(e){ /* corrupted storage falls through to a fresh DB */ }
+  DB = blankDB();
+}
+function saveDB(){ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+function seedIfNeeded(){
+  if(!DB.clients || DB.clients.length === 0){
+    DB.clients = JSON.parse(JSON.stringify(SEED_CLIENTS));
+  }
+  if(!DB.quotes) DB.quotes = [];
+  if(!DB.jobs) DB.jobs = [];
+  if(!DB.invoices) DB.invoices = [];
+  if(!DB.seq) DB.seq = { quote: 1001, invoice: 1001, client: 41 };
+  DB.clients.forEach(c => {
+    if(!("phone" in c)) c.phone = "";
+    if(!("email" in c)) c.email = "";
+    if(!("billingNotes" in c)) c.billingNotes = "";
+    if(!Array.isArray(c.contacts)) c.contacts = [];
+    if(!Array.isArray(c.properties)) c.properties = [];
+  });
+}
+
+/* ---------------- passcode (SHA-256) ---------------- */
+async function sha256(text){
+  if(window.crypto && crypto.subtle){
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+  }
+  /* Fallback for non-secure contexts only (rare): a simple non-crypto hash. */
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for(let i = 0; i < text.length; i++){
+    const ch = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (h2 >>> 0).toString(16).padStart(8,"0") + (h1 >>> 0).toString(16).padStart(8,"0");
+}
+
+/* ---------------- gate: setup / lock / role ---------------- */
+let ROLE = null;        /* "Owner" | "Office" — kept in sessionStorage */
+let UNLOCKED = false;   /* in-memory only: every fresh page load starts locked */
+const gateEl = () => $("#gate");
+
+function gateHTML(inner){
+  gateEl().innerHTML =
+    '<div class="lockwrap"><div class="lockcard">' +
+      '<div class="brand">SHARMA<span class="gold">360</span> · CRM</div>' +
+      '<div class="sub">Sharma Electric &amp; HVAC</div>' + inner +
+    '</div></div>';
+}
+function showSetup(){
+  gateHTML(
+    '<h2 class="view" style="text-align:center">Create your passcode</h2>' +
+    '<p class="muted small">First run. Pick a passcode for this app — you will enter it each time you open the CRM. Only a scrambled (SHA-256) copy is stored on this device.</p>' +
+    '<div class="err" id="gateerr"></div>' +
+    '<label class="f" style="text-align:left">Passcode</label>' +
+    '<input type="password" id="pc1" inputmode="numeric" autocomplete="new-password" placeholder="At least 4 characters">' +
+    '<label class="f" style="text-align:left">Type it again</label>' +
+    '<input type="password" id="pc2" inputmode="numeric" autocomplete="new-password" placeholder="Confirm passcode">' +
+    '<button class="btn gold block" id="setupgo" style="margin-top:20px">Set passcode &amp; open CRM</button>'
+  );
+  $("#setupgo").addEventListener("click", async () => {
+    const a = $("#pc1").value, b = $("#pc2").value, err = $("#gateerr");
+    if(a.length < 4){ err.textContent = "Passcode needs at least 4 characters."; err.style.display = "block"; return; }
+    if(a !== b){ err.textContent = "The two passcodes do not match."; err.style.display = "block"; return; }
+    DB.passHash = await sha256(a);
+    seedIfNeeded();
+    saveDB();
+    UNLOCKED = true;
+    showRolePicker();
+  });
+}
+function showLock(){
+  gateHTML(
+    '<h2 class="view" style="text-align:center">Locked</h2>' +
+    '<p class="muted small">Enter your passcode to open the CRM.</p>' +
+    '<div class="err" id="gateerr"></div>' +
+    '<label class="f" style="text-align:left">Passcode</label>' +
+    '<input type="password" id="pc" inputmode="numeric" autocomplete="current-password" placeholder="Passcode">' +
+    '<button class="btn gold block" id="unlockgo" style="margin-top:20px">Unlock</button>'
+  );
+  const input = $("#pc");
+  input.focus();
+  const tryUnlock = async () => {
+    const h = await sha256(input.value);
+    if(h === DB.passHash){
+      UNLOCKED = true;
+      if(sessionStorage.getItem(SS_ROLE)){ ROLE = sessionStorage.getItem(SS_ROLE); enterApp(); }
+      else showRolePicker();
+    } else {
+      const err = $("#gateerr");
+      err.textContent = "That passcode is not right. Try again.";
+      err.style.display = "block";
+      input.value = "";
+    }
+  };
+  $("#unlockgo").addEventListener("click", tryUnlock);
+  input.addEventListener("keydown", e => { if(e.key === "Enter") tryUnlock(); });
+}
+function showRolePicker(){
+  gateHTML(
+    '<h2 class="view" style="text-align:center">Who is using the CRM?</h2>' +
+    '<p class="muted small">Your role is remembered for this session only.</p>' +
+    '<button class="rolebtn" id="role-owner"><span class="ic">👑</span><span><span class="t">Owner</span><br><span class="d">Sanjay — full access, including approving quote prices</span></span></button>' +
+    '<button class="rolebtn" id="role-office"><span class="ic">🗂️</span><span><span class="t">Office</span><br><span class="d">Office team — clients, draft quotes, jobs, invoices</span></span></button>'
+  );
+  $("#role-owner").addEventListener("click", () => pickRole("Owner"));
+  $("#role-office").addEventListener("click", () => pickRole("Office"));
+}
+function pickRole(r){
+  ROLE = r;
+  sessionStorage.setItem(SS_ROLE, r);
+  enterApp();
+}
+function lockApp(){
+  UNLOCKED = false;
+  $("#appshell").classList.add("hidden");
+  gateEl().classList.remove("hidden");
+  showLock();
+  window.scrollTo(0, 0);
+}
+
+/* ---------------- app state & lookups ---------------- */
+let TAB = "today";
+let selClientId = null, selQuoteId = null, selJobId = null, selInvoiceId = null;
+let clientSearch = "";
+
+function clientById(id){ return DB.clients.find(c => c.id === id) || null; }
+function quoteById(id){ return DB.quotes.find(q => q.id === id) || null; }
+function jobById(id){ return DB.jobs.find(j => j.id === id) || null; }
+function invoiceById(id){ return DB.invoices.find(i => i.id === id) || null; }
+function propertyById(client, pid){
+  if(!client || !pid) return null;
+  return (client.properties || []).find(p => p.id === pid) || null;
+}
+function propertyLabel(client, pid){
+  const p = propertyById(client, pid);
+  if(!p) return "No property selected";
+  if(client && String(client.type).toLowerCase() === "builder"){
+    return (p.community || "—") + (p.address ? " · " + p.address : "");
+  }
+  return p.address || "—";
+}
+function quoteTotal(q){
+  return (q.lines || []).reduce((sum, l) => sum + (Number(l.qty) || 0) * (Number(l.price) || 0), 0);
+}
+const STAGES = [
+  { key: "tug",         label: "TUG" },
+  { key: "underground", label: "Underground" },
+  { key: "roughin",     label: "Rough-in" },
+  { key: "trim",        label: "Trim" },
+  { key: "final",       label: "Final" }
+];
+function blankStages(){
+  const s = {};
+  STAGES.forEach(st => { s[st.key] = { status: "not", date: "" }; });
+  return s;
+}
+function jobStatus(job){
+  return (job.stages && job.stages.final && job.stages.final.status === "done") ? "Completed" : "Active";
+}
+function jobDoneCount(job){
+  return STAGES.filter(st => job.stages && job.stages[st.key] && job.stages[st.key].status === "done").length;
+}
+function invoicePastDue(inv){
+  if(inv.status !== "Sent") return false;
+  const from = inv.sentAt || inv.createdAt;
+  return daysBetween(from, todayStr()) > 30;
+}
+function displayInvoiceStatus(inv){
+  if(inv.status === "Sent" && invoicePastDue(inv)) return "Past due";
+  return inv.status;
+}
+
+/* ---------------- app entry / tab routing ---------------- */
+function enterApp(){
+  gateEl().classList.add("hidden");
+  gateEl().innerHTML = "";
+  $("#appshell").classList.remove("hidden");
+  $("#rolebadge").textContent = ROLE;
+  render();
+  window.scrollTo(0, 0);
+}
+function go(tab){
+  TAB = tab;
+  if(tab !== "clients") selClientId = null;
+  if(tab !== "quotes") selQuoteId = null;
+  if(tab !== "jobs") selJobId = null;
+  if(tab !== "invoices") selInvoiceId = null;
+  render();
+  window.scrollTo(0, 0);
+}
+function render(){
+  document.querySelectorAll("#tabbar button").forEach(b => {
+    b.classList.toggle("on", b.dataset.tab === TAB);
+  });
+  const m = $("#main");
+  if(TAB === "today") m.innerHTML = viewToday();
+  else if(TAB === "clients") m.innerHTML = selClientId ? viewClientDetail(clientById(selClientId)) : viewClients();
+  else if(TAB === "quotes") m.innerHTML = selQuoteId ? viewQuoteDetail(quoteById(selQuoteId)) : viewQuotes();
+  else if(TAB === "jobs") m.innerHTML = selJobId ? viewJobDetail(jobById(selJobId)) : viewJobs();
+  else if(TAB === "invoices") m.innerHTML = selInvoiceId ? viewInvoiceDetail(invoiceById(selInvoiceId)) : viewInvoices();
+  else if(TAB === "settings") m.innerHTML = viewSettings();
+  bindView();
+}
+function bindView(){
+  if(TAB === "today") bindToday();
+  else if(TAB === "clients") { selClientId ? bindClientDetail() : bindClients(); }
+  else if(TAB === "quotes") { selQuoteId ? bindQuoteDetail() : bindQuotes(); }
+  else if(TAB === "jobs") { selJobId ? bindJobDetail() : bindJobs(); }
+  else if(TAB === "invoices") { selInvoiceId ? bindInvoiceDetail() : bindInvoices(); }
+  else if(TAB === "settings") bindSettings();
+}
+
+/* ---------------- TODAY ---------------- */
+function followUps(){
+  const t = todayStr(), out = [];
+  DB.quotes.forEach(q => {
+    if(q.status === "Draft"){
+      const age = daysBetween(q.createdAt, t);
+      if(age > 7){
+        const c = clientById(q.clientId);
+        out.push({ kind: "quote", id: q.id, red: false,
+          text: "Quote " + q.number + " — " + (c ? c.name : "Unknown client") + " (" + q.trade + ")",
+          sub: "Still a draft after " + age + " days · " + money(quoteTotal(q)) });
+      }
+    }
+  });
+  DB.invoices.forEach(inv => {
+    if(invoicePastDue(inv)){
+      const c = clientById(inv.clientId);
+      const age = daysBetween(inv.sentAt || inv.createdAt, t);
+      out.push({ kind: "invoice", id: inv.id, red: true,
+        text: "Invoice " + inv.number + " — " + (c ? c.name : "Unknown client"),
+        sub: "Past due · sent " + age + " days ago · " + money(inv.amount) + " unpaid" });
+    }
+  });
+  return out;
+}
+function viewToday(){
+  const drafts = DB.quotes.filter(q => q.status === "Draft");
+  const activeJobs = DB.jobs.filter(j => jobStatus(j) === "Active");
+  const unpaid = DB.invoices.filter(i => i.status === "Sent");
+  const unpaidTotal = unpaid.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const ups = followUps();
+  let h = '<h2 class="view">Today</h2><div class="stats">';
+  h += '<div class="stat"><div class="n">' + DB.clients.length + '</div><div class="l">Clients</div></div>';
+  h += '<div class="stat"><div class="n">' + drafts.length + '</div><div class="l">Draft quotes</div></div>';
+  h += '<div class="stat"><div class="n">' + activeJobs.length + '</div><div class="l">Active jobs</div></div>';
+  h += '<div class="stat"><div class="n">' + unpaid.length + '</div><div class="l">Unpaid invoices</div><div class="s">' + money(unpaidTotal) + '</div></div>';
+  h += '</div>';
+  h += '<h3 class="sec">Follow-ups due (' + ups.length + ')</h3>';
+  if(ups.length === 0){
+    h += '<div class="empty">No follow-ups due. Draft quotes older than 7 days and past-due invoices will show up here.</div>';
+  } else {
+    ups.forEach(u => {
+      h += '<button class="rowitem followup' + (u.red ? " red" : "") + '" data-follow="' + u.kind + ':' + u.id + '">' +
+             '<span class="grow"><span class="name">' + esc(u.text) + '</span><div class="meta">' + esc(u.sub) + '</div></span>' +
+             '<span class="chev">›</span></button>';
+    });
+  }
+  h += '<div class="card"><div class="kv"><span class="k">Approved quotes waiting to become jobs</span><span class="v">' +
+       DB.quotes.filter(q => q.status === "Approved").length + '</span></div>' +
+       '<div class="kv"><span class="k">Completed jobs</span><span class="v">' +
+       DB.jobs.filter(j => jobStatus(j) === "Completed").length + '</span></div>' +
+       '<div class="kv"><span class="k">Invoices still in draft (not sent)</span><span class="v">' +
+       DB.invoices.filter(i => i.status === "Draft").length + '</span></div></div>';
+  return h;
+}
+function bindToday(){
+  document.querySelectorAll("[data-follow]").forEach(b => b.addEventListener("click", () => {
+    const parts = b.dataset.follow.split(":");
+    if(parts[0] === "quote"){ selQuoteId = parts[1]; TAB = "quotes"; }
+    else { selInvoiceId = parts[1]; TAB = "invoices"; }
+    render(); window.scrollTo(0, 0);
+  }));
+}
+
+/* ---------------- CLIENTS ---------------- */
+let clientFormOpen = false, editingClientId = null;
+function viewClients(){
+  const q = clientSearch.trim().toLowerCase();
+  const list = DB.clients.filter(c => !q || c.name.toLowerCase().includes(q));
+  let h = '<h2 class="view">Clients</h2>';
+  h += '<input type="text" id="csearch" placeholder="Search clients…" value="' + esc(clientSearch) + '" autocomplete="off">';
+  h += '<button class="btn gold block" id="addclient" style="margin-top:12px">＋ Add client</button>';
+  if(clientFormOpen) h += clientFormHTML(editingClientId ? clientById(editingClientId) : null);
+  h += '<div style="height:8px"></div>';
+  if(list.length === 0){
+    h += '<div class="empty">' + (q ? "No clients match that search." : "No clients yet.") + '</div>';
+  }
+  list.forEach(c => {
+    const nq = DB.quotes.filter(x => x.clientId === c.id).length;
+    const nj = DB.jobs.filter(x => x.clientId === c.id).length;
+    h += '<button class="rowitem" data-client="' + c.id + '"><span class="grow">' +
+           '<span class="name">' + esc(c.name) + '</span>' +
+           '<div class="meta">' + typeLabel(c.type) + ' · ' + (c.properties || []).length + ' properties · ' + nq + ' quotes · ' + nj + ' jobs</div>' +
+         '</span><span class="badge">' + typeLabel(c.type) + '</span><span class="chev">›</span></button>';
+  });
+  return h;
+}
+function clientFormHTML(c){
+  const isNew = !c;
+  c = c || { name: "", type: "builder", phone: "", email: "", billingNotes: "", notes: "" };
+  const sel = t => String(c.type).toLowerCase() === t ? " selected" : "";
+  return '<div class="card" id="clientform"><h3 class="sec" style="margin-top:0">' + (isNew ? "New client" : "Edit client") + '</h3>' +
+    '<label class="f">Name *</label><input type="text" id="cf-name" value="' + esc(c.name) + '">' +
+    '<label class="f">Type</label><select id="cf-type">' +
+      '<option value="builder"' + sel("builder") + '>Builder</option>' +
+      '<option value="homeowner"' + sel("homeowner") + '>Homeowner</option>' +
+      '<option value="commercial"' + sel("commercial") + '>Commercial</option></select>' +
+    '<div class="grid2"><div><label class="f">Phone</label><input type="tel" id="cf-phone" value="' + esc(c.phone || "") + '"></div>' +
+    '<div><label class="f">Email</label><input type="email" id="cf-email" value="' + esc(c.email || "") + '"></div></div>' +
+    '<label class="f">Billing notes</label><textarea id="cf-billing" placeholder="Terms, where invoices go, draw schedule…">' + esc(c.billingNotes || "") + '</textarea>' +
+    '<label class="f">Notes</label><textarea id="cf-notes">' + esc(c.notes || "") + '</textarea>' +
+    '<div class="err" id="cferr"></div>' +
+    '<button class="btn block" id="cfsave">' + (isNew ? "Add client" : "Save changes") + '</button>' +
+    '<button class="btn ghost block" id="cfcancel">Cancel</button></div>';
+}
+function bindClients(){
+  const s = $("#csearch");
+  s.addEventListener("input", () => {
+    clientSearch = s.value;
+    const pos = s.selectionStart;
+    render();
+    const s2 = $("#csearch"); s2.focus(); s2.setSelectionRange(pos, pos);
+  });
+  $("#addclient").addEventListener("click", () => { clientFormOpen = true; editingClientId = null; render(); });
+  document.querySelectorAll("[data-client]").forEach(b => b.addEventListener("click", () => {
+    selClientId = b.dataset.client; clientFormOpen = false; render(); window.scrollTo(0, 0);
+  }));
+  if(clientFormOpen) bindClientForm();
+}
+function bindClientForm(){
+  $("#cfcancel").addEventListener("click", () => { clientFormOpen = false; editingClientId = null; render(); });
+  $("#cfsave").addEventListener("click", () => {
+    const name = $("#cf-name").value.trim();
+    if(!name){ const e = $("#cferr"); e.textContent = "The client needs a name."; e.style.display = "block"; return; }
+    const vals = {
+      name: name,
+      type: $("#cf-type").value,
+      phone: $("#cf-phone").value.trim(),
+      email: $("#cf-email").value.trim(),
+      billingNotes: $("#cf-billing").value.trim(),
+      notes: $("#cf-notes").value.trim()
+    };
+    if(editingClientId){
+      Object.assign(clientById(editingClientId), vals);
+    } else {
+      const nc = Object.assign({ id: "c" + String(DB.seq.client++).padStart(3, "0"), contacts: [], properties: [], source: "Added in CRM" }, vals);
+      DB.clients.push(nc);
+      selClientId = nc.id;
+    }
+    saveDB();
+    clientFormOpen = false; editingClientId = null;
+    render();
+  });
+}
+function viewClientDetail(c){
+  if(!c) return '<div class="empty">That client no longer exists.</div>';
+  const isBuilder = String(c.type).toLowerCase() === "builder";
+  let h = '<button class="backbtn" id="backclients">← All clients</button>';
+  h += '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">' +
+         '<div><div style="font-size:1.25rem;font-weight:800">' + esc(c.name) + '</div>' +
+         '<span class="badge">' + typeLabel(c.type) + '</span></div>' +
+         '<button class="btn ghost" id="editclient" style="min-height:48px;padding:8px 16px">Edit</button></div>';
+  if(c.phone) h += '<div class="kv"><span class="k">Phone</span><span class="v">' + esc(c.phone) + '</span></div>';
+  if(c.email) h += '<div class="kv"><span class="k">Email</span><span class="v">' + esc(c.email) + '</span></div>';
+  if(c.billingNotes) h += '<div class="kv"><span class="k">Billing notes</span><span class="v">' + esc(c.billingNotes) + '</span></div>';
+  if(c.notes) h += '<div class="kv"><span class="k">Notes</span><span class="v">' + esc(c.notes) + '</span></div>';
+  if(!c.phone && !c.email && !c.billingNotes && !c.notes)
+    h += '<p class="muted small" style="margin-bottom:0">No phone, email or notes on file yet — tap Edit to add them.</p>';
+  h += '</div>';
+  if(clientFormOpen && editingClientId === c.id) h += clientFormHTML(c);
+
+  /* contacts */
+  h += '<h3 class="sec">Contacts (' + (c.contacts || []).length + ')</h3>';
+  if((c.contacts || []).length === 0) h += '<div class="empty">No contacts on file for this client yet.</div>';
+  (c.contacts || []).forEach(ct => {
+    h += '<div class="card" style="padding:13px 16px"><b>' + esc(ct.name) + '</b>' +
+         (ct.role ? ' <span class="muted">· ' + esc(ct.role) + '</span>' : '') +
+         (ct.phone ? '<div class="small muted">📞 ' + esc(ct.phone) + '</div>' : '') +
+         (ct.email ? '<div class="small muted">✉️ ' + esc(ct.email) + '</div>' : '') + '</div>';
+  });
+  h += '<div class="card"><b>Add a contact</b>' +
+    '<label class="f">Name *</label><input type="text" id="ct-name">' +
+    '<label class="f">Role</label><input type="text" id="ct-role" placeholder="Purchasing, PM, homeowner…">' +
+    '<div class="grid2"><div><label class="f">Phone</label><input type="tel" id="ct-phone"></div>' +
+    '<div><label class="f">Email</label><input type="email" id="ct-email"></div></div>' +
+    '<button class="btn block" id="ctadd" style="margin-top:14px">Add contact</button></div>';
+
+  /* properties */
+  h += '<h3 class="sec">Properties (' + (c.properties || []).length + ')</h3>';
+  if((c.properties || []).length === 0) h += '<div class="empty">No properties on file for this client yet.</div>';
+  (c.properties || []).forEach(p => {
+    h += '<div class="card" style="padding:13px 16px">';
+    if(isBuilder){
+      h += '<b>' + esc(p.community || "—") + '</b>' + (p.address ? ' <span class="muted">· ' + esc(p.address) + '</span>' : '');
+      if(p.plan) h += '<div class="small muted">Plan: ' + esc(p.plan) + '</div>';
+      h += '<div class="small muted">Living SF: ' + (p.livingSF ? esc(p.livingSF) : "not on file") +
+           ' · Under Roof SF: ' + (p.roofSF ? esc(p.roofSF) : "not on file") + '</div>';
+    } else {
+      h += '<b>' + esc(p.address || "—") + '</b>';
+    }
+    h += '</div>';
+  });
+  h += '<div class="card"><b>Add a property</b>';
+  if(isBuilder){
+    h += '<label class="f">Community</label><input type="text" id="pf-community">' +
+         '<label class="f">Lot / address</label><input type="text" id="pf-address">' +
+         '<label class="f">Plan</label><input type="text" id="pf-plan">' +
+         '<div class="grid2"><div><label class="f">Living SF</label><input type="number" id="pf-living" inputmode="numeric" placeholder="Blank = not on file"></div>' +
+         '<div><label class="f">Under Roof SF</label><input type="number" id="pf-roof" inputmode="numeric" placeholder="Blank = not on file"></div></div>';
+  } else {
+    h += '<label class="f">Address</label><input type="text" id="pf-address">';
+  }
+  h += '<button class="btn block" id="pfadd" style="margin-top:14px">Add property</button></div>';
+
+  /* their quotes / jobs / invoices */
+  const qs = DB.quotes.filter(x => x.clientId === c.id);
+  const js = DB.jobs.filter(x => x.clientId === c.id);
+  const is = DB.invoices.filter(x => x.clientId === c.id);
+  h += '<h3 class="sec">Quotes (' + qs.length + ')</h3>';
+  if(qs.length === 0) h += '<div class="empty">No quotes for this client yet.</div>';
+  qs.forEach(q => { h += '<button class="rowitem" data-goquote="' + q.id + '"><span class="grow"><span class="name">' + q.number + ' · ' + q.trade + '</span><div class="meta">' + fmtDate(q.createdAt) + ' · ' + q.status + '</div></span><span class="amt">' + money(quoteTotal(q)) + '</span><span class="chev">›</span></button>'; });
+  h += '<h3 class="sec">Jobs (' + js.length + ')</h3>';
+  if(js.length === 0) h += '<div class="empty">No jobs for this client yet.</div>';
+  js.forEach(j => { const qc = quoteById(j.quoteId); h += '<button class="rowitem" data-gojob="' + j.id + '"><span class="grow"><span class="name">' + (qc ? qc.number : "Job") + ' · ' + j.trade + '</span><div class="meta">' + jobDoneCount(j) + ' of 5 stages done · ' + jobStatus(j) + '</div></span><span class="chev">›</span></button>'; });
+  h += '<h3 class="sec">Invoices (' + is.length + ')</h3>';
+  if(is.length === 0) h += '<div class="empty">No invoices for this client yet.</div>';
+  is.forEach(inv => { h += '<button class="rowitem" data-goinvoice="' + inv.id + '"><span class="grow"><span class="name">' + inv.number + '</span><div class="meta">' + fmtDate(inv.createdAt) + ' · ' + displayInvoiceStatus(inv) + '</div></span><span class="amt">' + money(inv.amount) + '</span><span class="chev">›</span></button>'; });
+  return h;
+}
+function bindClientDetail(){
+  const c = clientById(selClientId);
+  $("#backclients").addEventListener("click", () => { selClientId = null; render(); });
+  if(!c) return;
+  $("#editclient").addEventListener("click", () => { clientFormOpen = true; editingClientId = c.id; render(); });
+  if(clientFormOpen && editingClientId === c.id) bindClientForm();
+  $("#ctadd").addEventListener("click", () => {
+    const name = $("#ct-name").value.trim();
+    if(!name){ alert("The contact needs a name."); return; }
+    c.contacts.push({ id: uid("ct"), name: name, role: $("#ct-role").value.trim(), phone: $("#ct-phone").value.trim(), email: $("#ct-email").value.trim() });
+    saveDB(); render();
+  });
+  $("#pfadd").addEventListener("click", () => {
+    const isBuilder = String(c.type).toLowerCase() === "builder";
+    const p = { id: uid("p"), address: $("#pf-address").value.trim() };
+    if(isBuilder){
+      p.community = $("#pf-community").value.trim();
+      p.plan = $("#pf-plan").value.trim();
+      p.livingSF = $("#pf-living").value.trim();
+      p.roofSF = $("#pf-roof").value.trim();
+      if(!p.community && !p.address){ alert("Add at least a community or a lot/address."); return; }
+    } else if(!p.address){ alert("Add the property address."); return; }
+    c.properties.push(p);
+    saveDB(); render();
+  });
+  document.querySelectorAll("[data-goquote]").forEach(b => b.addEventListener("click", () => { selQuoteId = b.dataset.goquote; TAB = "quotes"; render(); window.scrollTo(0,0); }));
+  document.querySelectorAll("[data-gojob]").forEach(b => b.addEventListener("click", () => { selJobId = b.dataset.gojob; TAB = "jobs"; render(); window.scrollTo(0,0); }));
+  document.querySelectorAll("[data-goinvoice]").forEach(b => b.addEventListener("click", () => { selInvoiceId = b.dataset.goinvoice; TAB = "invoices"; render(); window.scrollTo(0,0); }));
+}
+
+/* ---------------- QUOTES ---------------- */
+let quoteFormOpen = false, editingQuoteId = null;
+function quoteBadge(st){
+  if(st === "Draft") return '<span class="badge gold">Draft</span>';
+  if(st === "Approved") return '<span class="badge green">Approved</span>';
+  if(st === "Converted") return '<span class="badge">Converted to job</span>';
+  return '<span class="badge grey">' + esc(st) + '</span>';
+}
+function viewQuotes(){
+  let h = '<h2 class="view">Quotes</h2>';
+  h += '<button class="btn gold block" id="addquote">＋ New quote</button>';
+  if(quoteFormOpen) h += quoteFormHTML(editingQuoteId ? quoteById(editingQuoteId) : null);
+  h += '<div style="height:8px"></div>';
+  if(DB.quotes.length === 0 && !quoteFormOpen){
+    h += '<div class="empty">No quotes yet. Quotes start as drafts — only the Owner can approve a price.</div>';
+  }
+  DB.quotes.slice().reverse().forEach(q => {
+    const c = clientById(q.clientId);
+    h += '<button class="rowitem" data-quote="' + q.id + '"><span class="grow">' +
+           '<span class="name">' + q.number + ' · ' + esc(c ? c.name : "Unknown client") + '</span>' +
+           '<div class="meta">' + q.trade + ' · ' + fmtDate(q.createdAt) + '</div></span>' +
+           '<span class="amt">' + money(quoteTotal(q)) + '</span>' + quoteBadge(q.status) + '<span class="chev">›</span></button>';
+  });
+  return h;
+}
+function lineRowHTML(l){
+  l = l || { desc: "", qty: 1, price: "" };
+  return '<div class="linerow"><input type="text" class="li-desc" placeholder="Description" value="' + esc(l.desc) + '">' +
+    '<input type="number" class="li-qty" min="0" step="any" value="' + esc(l.qty) + '" aria-label="Quantity">' +
+    '<input type="number" class="li-price" min="0" step="any" placeholder="$ Unit price" value="' + esc(l.price) + '" aria-label="Unit price">' +
+    '<button type="button" class="del" title="Remove line">✕</button></div>';
+}
+function quoteFormHTML(q){
+  const isNew = !q;
+  q = q || { clientId: "", propertyId: "", trade: "", lines: [{ desc: "", qty: 1, price: "" }] };
+  let h = '<div class="card" id="quoteform"><h3 class="sec" style="margin-top:0">' + (isNew ? "New quote" : "Edit quote " + q.number) + '</h3>';
+  h += '<label class="f">Client *</label><select id="qf-client"><option value="">Select a client…</option>';
+  DB.clients.forEach(c => { h += '<option value="' + c.id + '"' + (q.clientId === c.id ? " selected" : "") + '>' + esc(c.name) + '</option>'; });
+  h += '</select>';
+  h += '<label class="f">Property</label><select id="qf-property"></select>';
+  h += '<label class="f">Trade * — one trade per quote</label><select id="qf-trade">' +
+       '<option value="">Select trade…</option>' +
+       '<option value="Electric"' + (q.trade === "Electric" ? " selected" : "") + '>Electric</option>' +
+       '<option value="HVAC"' + (q.trade === "HVAC" ? " selected" : "") + '>HVAC</option></select>';
+  h += '<label class="f">Line items</label><div id="qf-lines">';
+  (q.lines && q.lines.length ? q.lines : [{ desc: "", qty: 1, price: "" }]).forEach(l => { h += lineRowHTML(l); });
+  h += '</div><button type="button" class="btn ghost" id="qf-addline" style="min-height:48px">＋ Add line</button>';
+  h += '<div class="totalrow"><span>Total</span><span id="qf-total">' + money(quoteTotal(q)) + '</span></div>';
+  h += '<div class="err" id="qferr"></div>';
+  h += '<button class="btn block" id="qfsave">' + (isNew ? "Save draft quote" : "Save changes") + '</button>';
+  h += '<button class="btn ghost block" id="qfcancel">Cancel</button></div>';
+  return h;
+}
+function fillPropertyOptions(clientId, selectedPid){
+  const sel = $("#qf-property");
+  if(!sel) return;
+  const c = clientById(clientId);
+  let h = '<option value="">No property selected</option>';
+  if(c) (c.properties || []).forEach(p => {
+    h += '<option value="' + p.id + '"' + (selectedPid === p.id ? " selected" : "") + '>' + esc(propertyLabel(c, p.id)) + '</option>';
+  });
+  sel.innerHTML = h;
+}
+function readLineRows(){
+  const rows = [];
+  document.querySelectorAll("#qf-lines .linerow").forEach(r => {
+    rows.push({ desc: $(".li-desc", r).value.trim(), qty: Number($(".li-qty", r).value) || 0, price: Number($(".li-price", r).value) || 0 });
+  });
+  return rows;
+}
+function refreshQuoteTotal(){
+  const t = readLineRows().reduce((s, l) => s + l.qty * l.price, 0);
+  const el = $("#qf-total");
+  if(el) el.textContent = money(t);
+}
+function bindQuoteForm(){
+  const q = editingQuoteId ? quoteById(editingQuoteId) : null;
+  fillPropertyOptions($("#qf-client").value, q ? q.propertyId : "");
+  $("#qf-client").addEventListener("change", e => fillPropertyOptions(e.target.value, ""));
+  $("#qf-addline").addEventListener("click", () => {
+    $("#qf-lines").insertAdjacentHTML("beforeend", lineRowHTML(null));
+    wireLineRows();
+  });
+  wireLineRows();
+  $("#qfcancel").addEventListener("click", () => { quoteFormOpen = false; editingQuoteId = null; render(); });
+  $("#qfsave").addEventListener("click", () => {
+    const err = $("#qferr");
+    const clientId = $("#qf-client").value;
+    const trade = $("#qf-trade").value;
+    const lines = readLineRows().filter(l => l.desc || l.price);
+    if(!clientId){ err.textContent = "Pick the client first."; err.style.display = "block"; return; }
+    if(!trade){ err.textContent = "Trade is required — Electric or HVAC. One trade per quote, always."; err.style.display = "block"; return; }
+    if(lines.length === 0){ err.textContent = "Add at least one line item."; err.style.display = "block"; return; }
+    if(editingQuoteId){
+      Object.assign(quoteById(editingQuoteId), { clientId: clientId, propertyId: $("#qf-property").value, trade: trade, lines: lines });
+    } else {
+      const nq = { id: uid("q"), number: "Q-" + (DB.seq.quote++), clientId: clientId,
+        propertyId: $("#qf-property").value, trade: trade, lines: lines,
+        status: "Draft", createdAt: todayStr() };
+      DB.quotes.push(nq);
+      selQuoteId = nq.id;
+    }
+    saveDB();
+    quoteFormOpen = false; editingQuoteId = null;
+    render();
+  });
+}
+function wireLineRows(){
+  document.querySelectorAll("#qf-lines .linerow").forEach(r => {
+    $(".del", r).onclick = () => { r.remove(); refreshQuoteTotal(); };
+    r.querySelectorAll("input").forEach(inp => inp.oninput = refreshQuoteTotal);
+  });
+}
+function bindQuotes(){
+  $("#addquote").addEventListener("click", () => { quoteFormOpen = true; editingQuoteId = null; render(); });
+  document.querySelectorAll("[data-quote]").forEach(b => b.addEventListener("click", () => {
+    selQuoteId = b.dataset.quote; quoteFormOpen = false; render(); window.scrollTo(0, 0);
+  }));
+  if(quoteFormOpen) bindQuoteForm();
+}
+function viewQuoteDetail(q){
+  if(!q) return '<div class="empty">That quote no longer exists.</div>';
+  const c = clientById(q.clientId);
+  let h = '<button class="backbtn" id="backquotes">← All quotes</button>';
+  h += '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">' +
+         '<div><div style="font-size:1.25rem;font-weight:800">' + q.number + '</div>' +
+         '<div class="muted">' + esc(c ? c.name : "Unknown client") + ' · ' + esc(propertyLabel(c, q.propertyId)) + '</div></div>' +
+         quoteBadge(q.status) + '</div>';
+  h += '<div class="kv"><span class="k">Trade</span><span class="v">' + q.trade + '</span></div>';
+  h += '<div class="kv"><span class="k">Created</span><span class="v">' + fmtDate(q.createdAt) + '</span></div>';
+  h += '<table class="lines"><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit</th><th class="num">Line total</th></tr>';
+  (q.lines || []).forEach(l => {
+    h += '<tr><td>' + esc(l.desc) + '</td><td class="num">' + esc(l.qty) + '</td><td class="num">' + money(l.price) + '</td><td class="num">' + money((Number(l.qty) || 0) * (Number(l.price) || 0)) + '</td></tr>';
+  });
+  h += '</table><div class="totalrow"><span>Quote total</span><span>' + money(quoteTotal(q)) + '</span></div>';
+  if(q.status === "Draft"){
+    h += '<p class="muted small">This price has not been approved yet. Only the Owner can approve it — that is the price gate.</p>';
+    if(ROLE === "Owner") h += '<button class="btn green block" id="qapprove">✓ Approve this price (Owner)</button>';
+    else h += '<div class="empty" style="margin-top:10px">Waiting on the Owner to approve this price. Office can edit the draft, but cannot approve it.</div>';
+    h += '<button class="btn ghost block" id="qedit">Edit draft</button>';
+  }
+  if(q.status === "Approved"){
+    h += '<p class="muted small">Price approved by the Owner. Convert it to a job when the work is a go.</p>';
+    h += '<button class="btn gold block" id="qconvert">Convert to job →</button>';
+  }
+  if(q.status === "Converted"){
+    const j = DB.jobs.find(x => x.quoteId === q.id);
+    h += '<p class="muted small">This quote is now a job.</p>';
+    if(j) h += '<button class="btn block" id="qgotojob">Open the job →</button>';
+  }
+  h += '</div>';
+  if(quoteFormOpen && editingQuoteId === q.id) h += quoteFormHTML(q);
+  return h;
+}
+function bindQuoteDetail(){
+  const q = quoteById(selQuoteId);
+  $("#backquotes").addEventListener("click", () => { selQuoteId = null; quoteFormOpen = false; render(); });
+  if(!q) return;
+  const ap = $("#qapprove");
+  if(ap) ap.addEventListener("click", () => { q.status = "Approved"; q.approvedAt = todayStr(); saveDB(); render(); });
+  const ed = $("#qedit");
+  if(ed) ed.addEventListener("click", () => { quoteFormOpen = true; editingQuoteId = q.id; render(); });
+  const cv = $("#qconvert");
+  if(cv) cv.addEventListener("click", () => {
+    const job = { id: uid("j"), quoteId: q.id, clientId: q.clientId, propertyId: q.propertyId,
+      trade: q.trade, createdAt: todayStr(), stages: blankStages() };
+    DB.jobs.push(job);
+    q.status = "Converted";
+    saveDB();
+    selQuoteId = null; selJobId = job.id; TAB = "jobs";
+    render(); window.scrollTo(0, 0);
+  });
+  const gj = $("#qgotojob");
+  if(gj) gj.addEventListener("click", () => { const j = DB.jobs.find(x => x.quoteId === q.id); if(j){ selJobId = j.id; selQuoteId = null; TAB = "jobs"; render(); window.scrollTo(0, 0); } });
+  if(quoteFormOpen && editingQuoteId === q.id) bindQuoteForm();
+}
+
+/* ---------------- JOBS ---------------- */
+function viewJobs(){
+  let h = '<h2 class="view">Jobs</h2>';
+  if(DB.jobs.length === 0){
+    h += '<div class="empty">No jobs yet. Jobs are created by converting an approved quote.</div>';
+  }
+  DB.jobs.slice().reverse().forEach(j => {
+    const c = clientById(j.clientId);
+    const q = quoteById(j.quoteId);
+    const st = jobStatus(j);
+    h += '<button class="rowitem" data-job="' + j.id + '"><span class="grow">' +
+           '<span class="name">' + esc(c ? c.name : "Unknown client") + ' · ' + j.trade + '</span>' +
+           '<div class="meta">' + (q ? q.number : "") + ' · ' + esc(propertyLabel(c, j.propertyId)) + ' · ' + jobDoneCount(j) + ' of 5 stages done</div></span>' +
+           (st === "Completed" ? '<span class="badge green">Completed</span>' : '<span class="badge gold">Active</span>') +
+           '<span class="chev">›</span></button>';
+  });
+  return h;
+}
+function bindJobs(){
+  document.querySelectorAll("[data-job]").forEach(b => b.addEventListener("click", () => {
+    selJobId = b.dataset.job; render(); window.scrollTo(0, 0);
+  }));
+}
+function viewJobDetail(j){
+  if(!j) return '<div class="empty">That job no longer exists.</div>';
+  const c = clientById(j.clientId);
+  const q = quoteById(j.quoteId);
+  const st = jobStatus(j);
+  let h = '<button class="backbtn" id="backjobs">← All jobs</button>';
+  h += '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">' +
+         '<div><div style="font-size:1.25rem;font-weight:800">' + esc(c ? c.name : "Unknown client") + '</div>' +
+         '<div class="muted">' + esc(propertyLabel(c, j.propertyId)) + '</div></div>' +
+         (st === "Completed" ? '<span class="badge green">Completed</span>' : '<span class="badge gold">Active</span>') + '</div>';
+  h += '<div class="kv"><span class="k">Trade</span><span class="v">' + j.trade + '</span></div>';
+  if(q) h += '<div class="kv"><span class="k">From quote</span><span class="v">' + q.number + ' · ' + money(quoteTotal(q)) + '</span></div>';
+  h += '<div class="kv"><span class="k">Started</span><span class="v">' + fmtDate(j.createdAt) + '</span></div></div>';
+  h += '<h3 class="sec">Stage tracker — tap a stage, set its date</h3>';
+  STAGES.forEach(s => {
+    const cur = (j.stages && j.stages[s.key]) || { status: "not", date: "" };
+    h += '<div class="stage"><div class="top"><span class="nm">' + s.label + '</span>' +
+           '<span class="badge ' + (cur.status === "done" ? "green" : (cur.status === "sched" ? "gold" : "grey")) + '">' +
+           (cur.status === "done" ? "Done" : (cur.status === "sched" ? "Scheduled" : "Not started")) + '</span></div>' +
+           '<div class="segbtns" data-stage="' + s.key + '">' +
+             '<button data-st="not" class="' + (cur.status === "not" ? "on-not" : "") + '">Not started</button>' +
+             '<button data-st="sched" class="' + (cur.status === "sched" ? "on-sched" : "") + '">Scheduled</button>' +
+             '<button data-st="done" class="' + (cur.status === "done" ? "on-done" : "") + '">Done</button></div>' +
+           '<input type="date" data-stagedate="' + s.key + '" value="' + esc(cur.date || "") + '" aria-label="' + s.label + ' date"></div>';
+  });
+  h += '<button class="btn gold block" id="newinv" style="margin-top:14px">＋ Create invoice from this job</button>';
+  return h;
+}
+function bindJobDetail(){
+  const j = jobById(selJobId);
+  $("#backjobs").addEventListener("click", () => { selJobId = null; render(); });
+  if(!j) return;
+  document.querySelectorAll("[data-stage]").forEach(group => {
+    const key = group.dataset.stage;
+    group.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+      j.stages[key].status = b.dataset.st;
+      saveDB(); render();
+    }));
+  });
+  document.querySelectorAll("[data-stagedate]").forEach(inp => inp.addEventListener("change", () => {
+    j.stages[inp.dataset.stagedate].date = inp.value;
+    saveDB();
+  }));
+  $("#newinv").addEventListener("click", () => {
+    invoiceFormOpen = true; invoiceFormJobId = j.id;
+    selJobId = null; TAB = "invoices";
+    render(); window.scrollTo(0, 0);
+  });
+}
+
+/* ---------------- INVOICES ---------------- */
+let invoiceFormOpen = false, invoiceFormJobId = "";
+function invoiceBadge(inv){
+  if(inv.status === "Draft") return '<span class="tag-draft">DRAFT — not sent</span>';
+  if(inv.status === "Paid") return '<span class="badge green">Paid</span>';
+  if(invoicePastDue(inv)) return '<span class="badge red">Past due</span>';
+  return '<span class="badge gold">Sent</span>';
+}
+function viewInvoices(){
+  let h = '<h2 class="view">Invoices</h2>';
+  h += '<button class="btn gold block" id="addinvoice">＋ New invoice</button>';
+  if(invoiceFormOpen) h += invoiceFormHTML();
+  h += '<div style="height:8px"></div>';
+  if(DB.invoices.length === 0 && !invoiceFormOpen){
+    h += '<div class="empty">No invoices yet. Invoices are created from jobs — in full, or as a stage draw.</div>';
+  }
+  DB.invoices.slice().reverse().forEach(inv => {
+    const c = clientById(inv.clientId);
+    h += '<button class="rowitem" data-invoice="' + inv.id + '"><span class="grow">' +
+           '<span class="name">' + inv.number + ' · ' + esc(c ? c.name : "Unknown client") + '</span>' +
+           '<div class="meta">' + fmtDate(inv.createdAt) + (inv.basis === "draw" ? ' · Draw ' + inv.drawPct + '%' : ' · Full amount') + '</div></span>' +
+           '<span class="amt">' + money(inv.amount) + '</span>' + invoiceBadge(inv) + '<span class="chev">›</span></button>';
+  });
+  return h;
+}
+function invoiceFormHTML(){
+  let h = '<div class="card" id="invoiceform"><h3 class="sec" style="margin-top:0">New invoice</h3>';
+  if(DB.jobs.length === 0){
+    h += '<p class="muted">There are no jobs yet — an invoice needs a job. Convert an approved quote first.</p>';
+  } else {
+    h += '<label class="f">Job *</label><select id="if-job">';
+    DB.jobs.slice().reverse().forEach(j => {
+      const c = clientById(j.clientId), q = quoteById(j.quoteId);
+      h += '<option value="' + j.id + '"' + (invoiceFormJobId === j.id ? " selected" : "") + '>' +
+             esc(c ? c.name : "Unknown client") + ' · ' + j.trade + (q ? ' · ' + q.number + ' · ' + money(quoteTotal(q)) : '') + '</option>';
+    });
+    h += '</select>';
+    h += '<label class="f">Bill</label><select id="if-basis">' +
+           '<option value="full">Full amount of the quote</option>' +
+           '<option value="draw">Stage draw — a % of the quote</option></select>';
+    h += '<div id="if-drawwrap" class="hidden"><label class="f">Draw %</label>' +
+         '<input type="number" id="if-pct" min="1" max="100" step="any" placeholder="e.g. 60"></div>';
+    h += '<div class="totalrow"><span>Invoice amount</span><span id="if-amount">$0.00</span></div>';
+    h += '<div class="err" id="iferr"></div>';
+    h += '<button class="btn block" id="ifsave">Create draft invoice</button>';
+  }
+  h += '<button class="btn ghost block" id="ifcancel">Cancel</button></div>';
+  return h;
+}
+function refreshInvoiceAmount(){
+  const j = jobById($("#if-job").value);
+  const q = j ? quoteById(j.quoteId) : null;
+  const total = q ? quoteTotal(q) : 0;
+  let amt = total;
+  if($("#if-basis").value === "draw"){
+    const pct = Number($("#if-pct").value) || 0;
+    amt = Math.round(total * pct) / 100;
+  }
+  $("#if-amount").textContent = money(amt);
+  return amt;
+}
+function bindInvoiceForm(){
+  const upd = () => {
+    $("#if-drawwrap").classList.toggle("hidden", $("#if-basis").value !== "draw");
+    refreshInvoiceAmount();
+  };
+  if($("#if-job")){
+    $("#if-job").addEventListener("change", upd);
+    $("#if-basis").addEventListener("change", upd);
+    $("#if-pct").addEventListener("input", refreshInvoiceAmount);
+    upd();
+  }
+  $("#ifcancel").addEventListener("click", () => { invoiceFormOpen = false; invoiceFormJobId = ""; render(); });
+  const sv = $("#ifsave");
+  if(sv) sv.addEventListener("click", () => {
+    const err = $("#iferr");
+    const j = jobById($("#if-job").value);
+    if(!j){ err.textContent = "Pick a job first."; err.style.display = "block"; return; }
+    const basis = $("#if-basis").value;
+    const pct = basis === "draw" ? Number($("#if-pct").value) : null;
+    if(basis === "draw" && !(pct > 0 && pct <= 100)){ err.textContent = "Enter a draw % between 1 and 100."; err.style.display = "block"; return; }
+    const amt = refreshInvoiceAmount();
+    const inv = { id: uid("inv"), number: "INV-" + (DB.seq.invoice++), jobId: j.id, quoteId: j.quoteId,
+      clientId: j.clientId, propertyId: j.propertyId, trade: j.trade,
+      basis: basis, drawPct: pct, amount: Math.round(amt * 100) / 100,
+      status: "Draft", createdAt: todayStr(), sentAt: null, payment: null };
+    DB.invoices.push(inv);
+    saveDB();
+    invoiceFormOpen = false; invoiceFormJobId = "";
+    selInvoiceId = inv.id;
+    render(); window.scrollTo(0, 0);
+  });
+}
+function bindInvoices(){
+  $("#addinvoice").addEventListener("click", () => { invoiceFormOpen = true; invoiceFormJobId = ""; render(); });
+  document.querySelectorAll("[data-invoice]").forEach(b => b.addEventListener("click", () => {
+    selInvoiceId = b.dataset.invoice; invoiceFormOpen = false; render(); window.scrollTo(0, 0);
+  }));
+  if(invoiceFormOpen) bindInvoiceForm();
+}
+function viewInvoiceDetail(inv){
+  if(!inv) return '<div class="empty">That invoice no longer exists.</div>';
+  const c = clientById(inv.clientId);
+  const q = quoteById(inv.quoteId);
+  let h = '<button class="backbtn" id="backinvoices">← All invoices</button>';
+  h += '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">' +
+         '<div><div style="font-size:1.25rem;font-weight:800">' + inv.number + '</div>' +
+         '<div class="muted">' + esc(c ? c.name : "Unknown client") + ' · ' + esc(propertyLabel(c, inv.propertyId)) + '</div></div>' +
+         invoiceBadge(inv) + '</div>';
+  h += '<div class="kv"><span class="k">Trade</span><span class="v">' + inv.trade + '</span></div>';
+  if(q) h += '<div class="kv"><span class="k">From quote</span><span class="v">' + q.number + ' · ' + money(quoteTotal(q)) + '</span></div>';
+  h += '<div class="kv"><span class="k">Billing</span><span class="v">' + (inv.basis === "draw" ? "Stage draw — " + inv.drawPct + "% of the quote" : "Full amount") + '</span></div>';
+  h += '<div class="kv"><span class="k">Created</span><span class="v">' + fmtDate(inv.createdAt) + '</span></div>';
+  if(inv.sentAt) h += '<div class="kv"><span class="k">Sent</span><span class="v">' + fmtDate(inv.sentAt) + '</span></div>';
+  h += '<div class="totalrow"><span>Amount</span><span>' + money(inv.amount) + '</span></div>';
+  if(inv.status === "Draft"){
+    h += '<p class="muted small">This invoice is a <b>draft — it has not been sent</b>. Mark it sent when it goes out.</p>';
+    h += '<button class="btn block" id="invsend">Mark as sent</button>';
+  }
+  if(inv.status === "Sent"){
+    if(invoicePastDue(inv)) h += '<p class="muted small" style="color:var(--red);font-weight:700">Past due — sent more than 30 days ago and still unpaid.</p>';
+    h += '<h3 class="sec">Record payment</h3>' +
+         '<label class="f">Payment date</label><input type="date" id="pay-date" value="' + todayStr() + '">' +
+         '<label class="f">Method</label><select id="pay-method">' +
+           '<option value="Check">Check</option><option value="ACH">ACH</option>' +
+           '<option value="Card">Card</option><option value="Zelle">Zelle</option></select>' +
+         '<label class="f">Reference</label><input type="text" id="pay-ref" placeholder="Check #, confirmation, last 4…">' +
+         '<button class="btn green block" id="invpaid" style="margin-top:16px">Record payment — mark paid</button>';
+  }
+  if(inv.status === "Paid" && inv.payment){
+    h += '<div class="kv"><span class="k">Paid</span><span class="v">' + fmtDate(inv.payment.date) + '</span></div>' +
+         '<div class="kv"><span class="k">Method</span><span class="v">' + esc(inv.payment.method) + '</span></div>' +
+         (inv.payment.ref ? '<div class="kv"><span class="k">Reference</span><span class="v">' + esc(inv.payment.ref) + '</span></div>' : '');
+  }
+  h += '</div>';
+  return h;
+}
+function bindInvoiceDetail(){
+  const inv = invoiceById(selInvoiceId);
+  $("#backinvoices").addEventListener("click", () => { selInvoiceId = null; render(); });
+  if(!inv) return;
+  const sd = $("#invsend");
+  if(sd) sd.addEventListener("click", () => { inv.status = "Sent"; inv.sentAt = todayStr(); saveDB(); render(); });
+  const pd = $("#invpaid");
+  if(pd) pd.addEventListener("click", () => {
+    inv.payment = { date: $("#pay-date").value || todayStr(), method: $("#pay-method").value, ref: $("#pay-ref").value.trim() };
+    inv.status = "Paid";
+    saveDB(); render();
+  });
+}
+
+/* ---------------- SETTINGS ---------------- */
+function viewSettings(){
+  let h = '<h2 class="view">Settings</h2><div class="card">';
+  h += '<div class="kv"><span class="k">Signed in as</span><span class="v">' + esc(ROLE || "") + '</span></div>';
+  h += '<div class="kv"><span class="k">Clients</span><span class="v">' + DB.clients.length + '</span></div>';
+  h += '<div class="kv"><span class="k">Quotes / Jobs / Invoices</span><span class="v">' + DB.quotes.length + ' / ' + DB.jobs.length + ' / ' + DB.invoices.length + '</span></div>';
+  h += '<p class="muted small">Data is stored on this device (this browser). Export a backup file regularly — importing a backup replaces the data on this device. Your passcode is never part of the export.</p>';
+  h += '<button class="btn block" id="exportbtn">⬇ Export data (JSON)</button>';
+  h += '<label class="f">Import a backup</label><input type="file" id="importfile" accept=".json,application/json">';
+  h += '<div class="okmsg" id="setok"></div><div class="err" id="seterr"></div>';
+  h += '</div><div class="card">';
+  h += '<button class="btn ghost block" id="switchrole">Switch role (Owner / Office)</button>';
+  h += '<button class="btn red block" id="lockbtn">🔒 Lock the CRM</button>';
+  h += '</div>';
+  h += '<p class="muted small" style="text-align:center">SHARMA360 · CRM — Stage A<br>Sharma Electric &amp; HVAC · Lic. EC13013924 · CAC1823596</p>';
+  return h;
+}
+function bindSettings(){
+  $("#exportbtn").addEventListener("click", () => {
+    const data = { clients: DB.clients, quotes: DB.quotes, jobs: DB.jobs, invoices: DB.invoices, seq: DB.seq };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "sharma-crm-backup-" + todayStr() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
+  $("#importfile").addEventListener("change", e => {
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if(!data || !Array.isArray(data.clients) || !Array.isArray(data.quotes) || !Array.isArray(data.jobs) || !Array.isArray(data.invoices)){
+          throw new Error("That file is not a Sharma CRM backup.");
+        }
+        DB.clients = data.clients; DB.quotes = data.quotes; DB.jobs = data.jobs; DB.invoices = data.invoices;
+        if(data.seq) DB.seq = data.seq;
+        seedIfNeeded();
+        saveDB();
+        const ok = $("#setok");
+        ok.textContent = "Backup imported. The data on this device has been replaced.";
+        ok.style.display = "block";
+      } catch(err){
+        const er = $("#seterr");
+        er.textContent = "Import failed: " + err.message;
+        er.style.display = "block";
+      }
+    };
+    reader.readAsText(f);
+  });
+  $("#switchrole").addEventListener("click", () => { $("#appshell").classList.add("hidden"); gateEl().classList.remove("hidden"); showRolePicker(); });
+  $("#lockbtn").addEventListener("click", lockApp);
+}
+
+/* ---------------- boot ---------------- */
+document.querySelectorAll("#tabbar button").forEach(b => b.addEventListener("click", () => go(b.dataset.tab)));
+$("#settingsbtn").addEventListener("click", () => { TAB = "settings"; selClientId = selQuoteId = selJobId = selInvoiceId = null; render(); window.scrollTo(0, 0); });
+loadDB();
+if(DB.passHash){ showLock(); }
+else { showSetup(); }
+</script>
+</body>
+</html>
