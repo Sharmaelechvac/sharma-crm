@@ -100,12 +100,6 @@ function needsAttention(){
         pill: '<span class="pill blue">Sent</span>',
         text: q.number + " — " + quoteTitle(q) + " · sent " + age + " days ago, no answer yet",
         sub: "Quote · " + (c ? c.name : "") + " · " + money(quoteTotal(q)) });
-    } else if (q.status === "Draft") {
-      var dage = q.createdAt ? daysBetween(q.createdAt, t) : 0;
-      if (dage > 14) items.push({ kind: "quote", id: q.id, rank: 3, age: dage,
-        pill: '<span class="pill grey">Draft</span>',
-        text: q.number + " — " + quoteTitle(q) + " · draft is " + dage + " days old",
-        sub: "Quote · " + (c ? c.name : "") + " · " + money(quoteTotal(q)) });
     }
   });
   items.sort(function(a, b){ return (a.rank - b.rank) || (b.age - a.age); });

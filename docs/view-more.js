@@ -338,10 +338,9 @@ function archiveHTML(){
       var nj = DB.jobs.filter(function(x){ return x.clientId === c.id; }).length;
       var ni = DB.invoices.filter(function(x){ return x.clientId === c.id; }).length;
       h += '<div class="rowitem">' + arcAvatar(c) +
-        '<span class="grow"><span class="name">' + esc(c.name) + '</span>' +
-        '<span class="meta">' + nq + ' quotes \u00B7 ' + nj + ' jobs \u00B7 ' + ni + ' invoices</span></span>' +
-        '<button class="btn sm ghost" data-act="arc_restore_client" data-id="' + c.id + '">Restore</button>' +
-        '<button class="btn sm ghost" data-act="arc_open_client" data-id="' + c.id + '">Open</button></div>';
+        '<button class="arc-main" data-act="arc_open_client" data-id="' + c.id + '"><span class="grow"><span class="name">' + esc(c.name) + '</span>' +
+        '<span class="meta">' + nq + ' quotes \u00B7 ' + nj + ' jobs \u00B7 ' + ni + ' invoices</span></span><span class="chev">\u203A</span></button>' +
+        '<button class="btn sm tint" data-act="arc_restore_client" data-id="' + c.id + '">Restore</button></div>';
     });
     h += '</div><p class="muted small">A client\u2019s quotes, jobs and invoices are archived with it \u2014 restoring the client brings them all back.</p>';
   }

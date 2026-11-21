@@ -675,7 +675,7 @@ function invDocumentHTML(inv){
      Brand colour appears only in the wordmark + one tint rule. */
   h += '<div class="doc" id="inv-doc">';
   h += '<div class="doc-head"><div>' +
-    '<div class="doc-co">SHARMA ELECTRIC &amp; <span class="gold">HVAC</span></div>' +
+    '<img class="doc-logo" src="assets/sharma360-logo.png" alt="SHARMA360 — Sharma Electric &amp; HVAC">' +
     '<div class="muted">SHARMA360</div>' +
     '<div class="small muted">Lic. EC13013924 · CAC1823596</div>' +
     '<div class="small muted">office@sharmaelectric.com · 407-881-9076</div></div>' +

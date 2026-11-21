@@ -239,7 +239,8 @@ h3.sec{
   transition:background .15s var(--ease);
 }
 .snav button:active{background:var(--fill-2);}
-.snav button .ic{font-size:20px; width:24px; flex:0 0 24px; text-align:center; color:var(--label-2);}
+.snav button .ic{width:24px; flex:0 0 24px; display:flex; align-items:center; justify-content:center; color:var(--label-2);}
+.snav button .ic svg{width:21px; height:21px; display:block;}
 .snav button .lbl{flex:1;}
 .snav button.on{background:var(--fill-3);}
 :root[data-theme="dark"] .snav button.on{background:var(--fill-2);}
@@ -308,13 +309,15 @@ h3.sec{
 .searchwrap input{
   width:100%; height:var(--search-h);
   border:0; border-radius:var(--r-field);
-  background:var(--fill-3); padding:0 12px 0 34px;
+  background:var(--fill-3); padding:0 12px 0 37px;
   font-size:17px; color:var(--label);
+  -webkit-appearance:none; appearance:none;
 }
 .searchwrap input::placeholder{color:var(--placeholder);}
 .searchwrap input:focus{outline:none; background:var(--fill-2);}
+.searchwrap input[type="search"]{padding-left:37px; padding-right:12px;}
 .searchwrap .s-ic{
-  position:absolute; left:9px; top:50%; transform:translateY(-50%);
+  position:absolute; left:11px; top:50%; transform:translateY(-50%);
   font-size:15px; color:var(--label-2); pointer-events:none;
 }
 #searchresults{
@@ -411,7 +414,9 @@ h3.sec{
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
   padding:4px 2px; min-height:44px;
 }
-.tabbar button .ic{font-size:25px; line-height:1;}
+.tabbar button .ic{height:27px; display:flex; align-items:flex-start; justify-content:center;}
+.tabbar button .ic svg{width:25px; height:25px; display:block;}
+.tabbar button.on .ic svg{stroke-width:2.15;}
 .tabbar button.on{color:var(--label);}
 .tabbadge{
   position:absolute; top:0; right:calc(50% - 24px);
@@ -1056,12 +1061,11 @@ table.lines tr:last-child td{border-bottom:0;}
   border-radius:var(--r-sheet);
   width:100%; max-width:400px; padding:34px 28px 28px; text-align:center;
 }
-.lockcard .brand{
-  font-size:var(--fs-title-2); line-height:var(--lh-title-2);
-  font-weight:800; letter-spacing:-.01em; color:var(--brand-navy);
+.lockcard .lock-logo{width:min(272px, 74vw); height:auto; display:block; margin:2px auto 6px;}
+.lockcard .lock-cap{
+  text-align:center; font-size:13px; font-weight:700; letter-spacing:.22em;
+  color:var(--label-2); margin:0 0 22px; text-transform:uppercase;
 }
-.lockcard .brand .gold{color:var(--brand-gold-text);}
-.lockcard .sub{color:var(--label-2); font-size:var(--fs-subhead); margin:4px 0 20px;}
 .lockcard h2.view{
   font-size:var(--fs-title-3); line-height:var(--lh-title-3);
   text-align:center; margin-bottom:8px;
@@ -1075,7 +1079,8 @@ table.lines tr:last-child td{border-bottom:0;}
   padding:16px; min-height:64px; margin-bottom:10px;
 }
 .rolebtn:active{background:var(--fill-2);}
-.rolebtn .ic{font-size:26px;}
+.rolebtn .ic{display:flex; align-items:center; color:var(--label-2);}
+.rolebtn .ic svg{width:29px; height:29px; display:block;}
 .rolebtn .t{font-weight:600; font-size:var(--fs-body);}
 .rolebtn .d{color:var(--label-2); font-size:var(--fs-footnote); line-height:var(--lh-footnote);}
 
@@ -1394,3 +1399,21 @@ label.f, .field label, .frow label{font-weight:600;}
 .grouplabel{font-weight:600;}
 .dh-title{font-weight:600;}
 .sidefoot .name, .sr-t{font-weight:600;}
+
+/* ---- real Sharma360 logo + inline icon spans (2026-11-21) ---- */
+.wordmark .wm-logo{width:198px; max-width:100%; height:auto; display:block; background:#fff; border-radius:12px; padding:8px 10px; box-shadow:inset 0 0 0 0.5px var(--separator);}
+.wordmark .wm-sub{
+  margin-top:8px; font-size:12px; font-weight:700; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--label-2);
+}
+.brand-mini{display:flex; align-items:center;}
+.brand-mini img{height:23px; width:auto; display:block;}
+.fic{display:inline-flex; align-items:center; justify-content:center;}
+.fic svg{display:block;}
+.sidefoot .fic svg{width:15px; height:15px;}
+.btn.gold .fic svg{width:15px; height:15px;}
+.btn.gold{gap:7px;}
+.s-ic svg{width:17px; height:17px; display:block;}
+.doc-logo{width:212px; max-width:60vw; height:auto; display:block;}
+.arc-main{flex:1; min-width:0; display:flex; align-items:center; gap:12px; background:none; border:0; padding:0; text-align:left; color:var(--label); cursor:pointer;}
+.arc-main .grow{min-width:0;}

@@ -137,8 +137,8 @@ const gateEl = () => $("#gate");
 function gateHTML(inner){
   gateEl().innerHTML =
     '<div class="lockwrap"><div class="lockcard">' +
-      '<div class="brand">SHARMA<span class="gold">360</span> · CRM</div>' +
-      '<div class="sub">Sharma Electric &amp; HVAC</div>' + inner +
+      '<img class="lock-logo" src="assets/sharma360-logo.png" alt="SHARMA360 — Sharma Electric &amp; HVAC">' +
+      '<div class="lock-cap">CRM</div>' + inner +
     '</div></div>';
 }
 function showSetup(){
@@ -194,8 +194,8 @@ function showRolePicker(){
   gateHTML(
     '<h2 class="view" style="text-align:center">Who is using the CRM?</h2>' +
     '<p class="muted small">Your role is remembered for this session only.</p>' +
-    '<button class="rolebtn" id="role-owner"><span class="ic">👑</span><span><span class="t">Owner</span><br><span class="d">Sanjay — full access, including setting and sending quote prices</span></span></button>' +
-    '<button class="rolebtn" id="role-office"><span class="ic">🗂️</span><span><span class="t">Office</span><br><span class="d">Office team — clients, jobs, invoices; quote prices are Owner-only</span></span></button>'
+    '<button class="rolebtn" id="role-owner"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5.8 19.6c.8-3.1 3.2-4.9 6.2-4.9s5.4 1.8 6.2 4.9"/></svg></span><span><span class="t">Owner</span><br><span class="d">Sanjay — full access, including setting and sending quote prices</span></span></button>' +
+    '<button class="rolebtn" id="role-office"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.2" r="3.4"/><path d="M3.8 19.2c.7-3 2.8-4.6 5.2-4.6s4.5 1.6 5.2 4.6"/><path d="M15.6 5.3a3.4 3.4 0 0 1-.1 6.1M17.9 14.9c1.3.7 2.2 2 2.6 3.9"/></svg></span><span><span class="t">Office</span><br><span class="d">Office team — clients, jobs, invoices; quote prices are Owner-only</span></span></button>'
   );
   $("#role-owner").addEventListener("click", () => pickRole("Owner"));
   $("#role-office").addEventListener("click", () => pickRole("Office"));
